@@ -1,18 +1,21 @@
 [Unit]
-Description=BasBuddy GTFS-RT Poller (SINGLETON — must never run as more than 1 instance)
-After=network.target valkey.service postgresql.service
+Description=BasBuddy GTFS-RT Poller (SINGLETON — Rate Limit Protected)
+After=network.target valkey-server.service postgresql.service
+Wants=valkey-server.service postgresql.service
 
 [Service]
 Type=simple
 User=basbuddy
-WorkingDirectory=/opt/basbuddy
-EnvironmentFile=/opt/basbuddy/.env
+WorkingDirectory=/home/basbuddy/basbuddy
+EnvironmentFile=/etc/basbuddy/.env
 ExecStart=/usr/bin/node packages/poller/dist/poller.js
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=basbuddy-poller
+ProtectSystem=full
+NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target

@@ -1,0 +1,54 @@
+name: Deploy to Production (OCI VM)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH to OCI VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OCI_VM_HOST }}
+          username: ${{ secrets.OCI_VM_USER }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          port: ${{ secrets.OCI_SSH_PORT || 22 }}
+          script: |
+            set -e
+
+            echo "=== 1. Pulling latest code ==="
+            cd /home/basbuddy/basbuddy
+            git pull origin main
+
+            echo "=== 2. Installing dependencies & building ==="
+            npm ci
+            npm run build
+
+            echo "=== 3. Running database migrations ==="
+            set -a
+            [ -f /etc/basbuddy/.env ] && . /etc/basbuddy/.env
+            set +a
+            npm run migrate
+
+            echo "=== 4. Syncing systemd service files ==="
+            sudo cp deploy/basbuddy-api.service /etc/systemd/system/basbuddy-api.service
+            sudo cp deploy/basbuddy-poller.service /etc/systemd/system/basbuddy-poller.service
+            sudo cp deploy/basbuddy-ingest.service /etc/systemd/system/basbuddy-ingest.service
+            sudo cp deploy/basbuddy-ingest.timer /etc/systemd/system/basbuddy-ingest.timer
+
+            sudo systemctl daemon-reload
+
+            echo "=== 5. Restarting services & timers ==="
+            sudo systemctl restart basbuddy-api
+            sudo systemctl restart basbuddy-poller
+            sudo systemctl enable --now basbuddy-ingest.timer
+
+            echo "=== 6. Reloading Caddy ==="
+            sudo systemctl reload caddy
+
+            echo "=== 7. Performing local health check ==="
+            sleep 2
+            curl -fsS http://127.0.0.1:3001/api/routes > /dev/null
+            echo "✓ Deployment completed successfully."

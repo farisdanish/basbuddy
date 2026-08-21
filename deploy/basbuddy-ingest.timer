@@ -1,0 +1,9 @@
+[Unit]
+Description=Run BasBuddy GTFS Static Ingestion Daily at 04:00 MYT (UTC+8)
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
