@@ -44,7 +44,15 @@ export function computeEta(opts: EtaOptions): Map<string, number> {
 
   const result = new Map<string, number>();
 
-  for (const [stopId, stopDistAlong] of stopDistances) {
+  const tripStops = staticLookup.tripStopList.get(opts.tripId);
+  const stopIdsToEvaluate = tripStops
+    ? tripStops.map((ts) => ts.stopId)
+    : Array.from(stopDistances.keys());
+
+  for (const stopId of stopIdsToEvaluate) {
+    const stopDistAlong = stopDistances.get(stopId);
+    if (stopDistAlong === undefined) continue;
+
     const distRemaining = stopDistAlong - vehicleDistAlong;
     if (distRemaining <= 0) continue; // stop is behind the vehicle
 

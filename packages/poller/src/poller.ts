@@ -52,7 +52,8 @@ async function main(): Promise<void> {
   console.log('[poller] Loading static lookup tables from Postgres...');
   let staticLookup: StaticLookup = await loadStaticLookup(pool);
   console.log(
-    `[poller] Loaded ${staticLookup.tripCount} trips, ${staticLookup.shapeCount} shape points.`,
+    `[poller] Loaded ${staticLookup.routes.size} routes, ${staticLookup.stops.size} stops, ` +
+      `${staticLookup.tripCount} trips, ${staticLookup.shapeCount} shape points.`,
   );
 
   // ── Drift-corrected poll loop ────────────────────────────────────────────────

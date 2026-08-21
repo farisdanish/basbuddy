@@ -1,4 +1,5 @@
 import { Drawer } from 'vaul';
+import type { StopArrival } from '@basbuddy/shared';
 import { useStopEtas } from '../../hooks/useStopEtas.ts';
 import { ArrivalRow } from './ArrivalRow.tsx';
 
@@ -68,7 +69,7 @@ export function StopSheet({ stopId, onClose }: StopSheetProps) {
                 No upcoming buses in the next hour.
               </p>
             )}
-            {data && data.arrivals.map((arrival) => (
+            {data && data.arrivals.map((arrival: StopArrival) => (
               <ArrivalRow key={`${arrival.tripId}-${arrival.etaSeconds}`} arrival={arrival} />
             ))}
           </div>

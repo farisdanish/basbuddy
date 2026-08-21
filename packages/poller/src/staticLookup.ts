@@ -11,6 +11,18 @@ export interface ShapePoint {
   sequence: number;
 }
 
+export interface RouteInfo {
+  routeShortName: string;
+  routeLongName: string;
+  routeColor: string;
+}
+
+export interface StopInfo {
+  stopName: string;
+  lat: number;
+  lon: number;
+}
+
 export interface TripInfo {
   routeId: string;
   directionId: number;
@@ -19,8 +31,14 @@ export interface TripInfo {
 }
 
 export interface StaticLookup {
+  /** Map from route_id → RouteInfo */
+  routes: Map<string, RouteInfo>;
+  /** Map from stop_id → StopInfo */
+  stops: Map<string, StopInfo>;
   /** Map from trip_id → TripInfo */
   trips: Map<string, TripInfo>;
+  /** Map from trip_id → ordered list of { stopId, stopSequence } */
+  tripStopList: Map<string, Array<{ stopId: string; stopSequence: number }>>;
   /** Map from shape_id → ShapePoint[] (sorted ascending by sequence) */
   shapes: Map<string, ShapePoint[]>;
   /** Map from shape_id → cumulative distances in meters, parallel to shapes[shape_id] */
@@ -37,16 +55,51 @@ export interface StaticLookup {
 }
 
 /**
- * Loads trips and shapes from Postgres into memory.
+ * Loads routes, stops, trips, shapes, and stop times from Postgres into memory.
  * This is a one-time startup cost — typically a few seconds for a full feed.
  */
 export async function loadStaticLookup(pool: Pool): Promise<StaticLookup> {
+  const routes = new Map<string, RouteInfo>();
+  const stops = new Map<string, StopInfo>();
   const trips = new Map<string, TripInfo>();
+  const tripStopList = new Map<string, Array<{ stopId: string; stopSequence: number }>>();
   const shapes = new Map<string, ShapePoint[]>();
   const shapeCumulativeDistances = new Map<string, number[]>();
   const stopSequences = new Map<string, number>();
   const stopAtSequence = new Map<string, string>();
   const stopShapeDistances = new Map<string, Map<string, number>>();
+
+  // ── Load routes ────────────────────────────────────────────────────────────
+  const routesResult = await pool.query<{
+    route_id: string;
+    route_short_name: string;
+    route_long_name: string;
+    route_color: string;
+  }>('SELECT route_id, route_short_name, route_long_name, route_color FROM routes');
+
+  for (const row of routesResult.rows) {
+    routes.set(row.route_id, {
+      routeShortName: row.route_short_name,
+      routeLongName: row.route_long_name,
+      routeColor: row.route_color,
+    });
+  }
+
+  // ── Load stops ─────────────────────────────────────────────────────────────
+  const stopsResult = await pool.query<{
+    stop_id: string;
+    stop_name: string;
+    stop_lat: number;
+    stop_lon: number;
+  }>('SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops');
+
+  for (const row of stopsResult.rows) {
+    stops.set(row.stop_id, {
+      stopName: row.stop_name,
+      lat: row.stop_lat,
+      lon: row.stop_lon,
+    });
+  }
 
   // ── Load trips ─────────────────────────────────────────────────────────────
   const tripsResult = await pool.query<{
@@ -101,42 +154,27 @@ export async function loadStaticLookup(pool: Pool): Promise<StaticLookup> {
   }
 
   // ── Load stop_times for stop-shape distance mapping ────────────────────────
-  // We load all stop_times to be able to project each stop onto its shape.
-  // This lets the ETA engine know how far along the route each stop is.
   const stopTimesResult = await pool.query<{
     trip_id: string;
     stop_id: string;
     stop_sequence: number;
-  }>('SELECT trip_id, stop_id, stop_sequence FROM stop_times');
+  }>('SELECT trip_id, stop_id, stop_sequence FROM stop_times ORDER BY trip_id, stop_sequence ASC');
 
   for (const row of stopTimesResult.rows) {
     stopSequences.set(`${row.trip_id}|${row.stop_id}`, row.stop_sequence);
     stopAtSequence.set(`${row.trip_id}|${row.stop_sequence}`, row.stop_id);
+
+    if (!tripStopList.has(row.trip_id)) {
+      tripStopList.set(row.trip_id, []);
+    }
+    tripStopList.get(row.trip_id)!.push({
+      stopId: row.stop_id,
+      stopSequence: row.stop_sequence,
+    });
   }
 
   // ── Pre-compute stop distances along each shape ────────────────────────────
-  // For each trip, project each stop's lat/lon onto the shape polyline.
-  const stopsResult = await pool.query<{
-    stop_id: string;
-    stop_lat: number;
-    stop_lon: number;
-  }>('SELECT stop_id, stop_lat, stop_lon FROM stops');
-
-  const stopCoords = new Map<string, { lat: number; lon: number }>();
-  for (const row of stopsResult.rows) {
-    stopCoords.set(row.stop_id, { lat: row.stop_lat, lon: row.stop_lon });
-  }
-
-  // Build shape_id → stop_id → projected distance map
-  // We iterate over trips to know which stops belong to which shape
-  const tripStops = new Map<string, { stopId: string; seq: number }[]>();
-  for (const [key, seq] of stopSequences) {
-    const [tripId, stopId] = key.split('|') as [string, string];
-    if (!tripStops.has(tripId)) tripStops.set(tripId, []);
-    tripStops.get(tripId)!.push({ stopId, seq });
-  }
-
-  for (const [tripId, stops] of tripStops) {
+  for (const [tripId, tStops] of tripStopList) {
     const trip = trips.get(tripId);
     if (!trip) continue;
     const { shapeId } = trip;
@@ -149,17 +187,20 @@ export async function loadStaticLookup(pool: Pool): Promise<StaticLookup> {
     }
     const shapeStopMap = stopShapeDistances.get(shapeId)!;
 
-    for (const { stopId } of stops) {
+    for (const { stopId } of tStops) {
       if (shapeStopMap.has(stopId)) continue; // already computed for this shape
-      const coords = stopCoords.get(stopId);
-      if (!coords) continue;
-      const projDist = projectPointToPolylineDistance(coords.lat, coords.lon, points, cumDist);
+      const stopInfo = stops.get(stopId);
+      if (!stopInfo) continue;
+      const projDist = projectPointToPolylineDistance(stopInfo.lat, stopInfo.lon, points, cumDist);
       shapeStopMap.set(stopId, projDist);
     }
   }
 
   return {
+    routes,
+    stops,
     trips,
+    tripStopList,
     shapes,
     shapeCumulativeDistances,
     stopSequences,

@@ -87,10 +87,13 @@ export async function runPollCycle(opts: CycleOptions): Promise<void> {
       if (!stopArrivalsMap.has(stopId)) {
         stopArrivalsMap.set(stopId, []);
       }
+      const routeShortName =
+        staticLookup.routes.get(routeId)?.routeShortName || routeId;
+
       stopArrivalsMap.get(stopId)!.push({
         tripId,
         routeId,
-        routeShortName: routeId, // TODO: enrich with route.route_short_name from a routes map
+        routeShortName,
         tripHeadsign: headsign,
         etaSeconds,
         source: 'live',
@@ -137,9 +140,11 @@ export async function runPollCycle(opts: CycleOptions): Promise<void> {
     // Sort ascending by ETA
     arrivals.sort((a, b) => a.etaSeconds - b.etaSeconds);
 
+    const stopName = staticLookup.stops.get(stopId)?.stopName ?? '';
+
     const etasResponse: StopEtasResponse = {
       stopId,
-      stopName: '', // TODO: enrich from a stops map loaded at startup
+      stopName,
       generatedAt,
       arrivals,
     };

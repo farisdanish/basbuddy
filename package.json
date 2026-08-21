@@ -7,22 +7,25 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build --workspace=@basbuddy/shared && npm run build --workspaces --if-present",
     "dev": "npm run dev --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "ingest": "npm run ingest --workspace=packages/ingestion",
-    "poller": "npm run dev --workspace=packages/poller",
-    "api": "npm run dev --workspace=packages/api",
-    "frontend": "npm run dev --workspace=packages/frontend"
+    "test": "vitest run",
+    "migrate": "npm run migrate --workspace=@basbuddy/ingestion",
+    "ingest": "npm run ingest --workspace=@basbuddy/ingestion",
+    "poller": "npm run dev --workspace=@basbuddy/poller",
+    "api": "npm run dev --workspace=@basbuddy/api",
+    "frontend": "npm run dev --workspace=@basbuddy/frontend"
   },
   "devDependencies": {
-    "typescript": "^5.5.4",
     "@types/node": "^20.16.0",
-    "prettier": "^3.3.3",
-    "eslint": "^9.9.0",
     "@typescript-eslint/eslint-plugin": "^8.3.0",
-    "@typescript-eslint/parser": "^8.3.0"
+    "@typescript-eslint/parser": "^8.3.0",
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=20.0.0",

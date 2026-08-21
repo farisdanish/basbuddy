@@ -6,6 +6,7 @@
   "scripts": {
     "ingest": "tsx src/ingest.ts",
     "migrate": "node-pg-migrate -d \"$DATABASE_URL\" -m ../../migrations up",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "tsc --build"
   },

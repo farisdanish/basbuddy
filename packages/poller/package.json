@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx --watch src/poller.ts",
     "start": "node dist/poller.js",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "tsc --build"
   },

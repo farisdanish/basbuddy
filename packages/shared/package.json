@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build --force",
     "typecheck": "tsc --noEmit",
     "clean": "rimraf dist"
   },

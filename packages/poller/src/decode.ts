@@ -65,7 +65,12 @@ export function decodeRealtimeFeed(buffer: Buffer): RawVehicleEntity[] {
       lat,
       lon,
       bearing: pos.bearing ?? null,
-      gtfsTimestamp: typeof vp.timestamp === 'number' ? vp.timestamp : null,
+      gtfsTimestamp:
+        typeof vp.timestamp === 'number'
+          ? vp.timestamp
+          : vp.timestamp && typeof (vp.timestamp as { toNumber?: () => number }).toNumber === 'function'
+            ? (vp.timestamp as { toNumber: () => number }).toNumber()
+            : null,
     });
   }
 

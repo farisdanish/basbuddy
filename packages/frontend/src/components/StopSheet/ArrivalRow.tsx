@@ -16,6 +16,7 @@ export function freshnessClass(freshness: FreshnessStatus): string {
     case 'live':        return 'live';
     case 'stale':       return 'stale';
     case 'signal_lost': return 'signal-lost';
+    default:            return 'signal-lost';
   }
 }
 

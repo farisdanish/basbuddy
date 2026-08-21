@@ -107,8 +107,8 @@ npm run frontend
 
 | # | Scope | Status |
 |---|---|---|
-| M1 | Ingestion script — static GTFS → Postgres | 🔲 |
-| M2 | Poller + Valkey cache — GTFS-RT → ETAs | 🔲 |
+| M1 | Ingestion script — static GTFS → Postgres | ✅ |
+| M2 | Poller + Valkey cache — GTFS-RT → ETAs | ✅ |
 | M3 | ETA engine — distance-along-route + naive speed model | 🔲 |
 | M4 | REST API — Express endpoints per contract | 🔲 |
 | M5 | Frontend shell — React + Vite + map scaffold | 🔲 |
