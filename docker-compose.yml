@@ -1,0 +1,93 @@
+services:
+  # ── Valkey (Redis-compatible) ────────────────────────────────────────────────
+  valkey:
+    image: valkey/valkey:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - valkey_data:/data
+    command: ["valkey-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ── Postgres ─────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: basbuddy
+      POSTGRES_USER: basbuddy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U basbuddy -d basbuddy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── API server ────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Kuala_Lumpur
+      VALKEY_HOST: valkey
+      VALKEY_PORT: "6379"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: basbuddy
+      POSTGRES_USER: basbuddy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      API_PORT: "3001"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    depends_on:
+      valkey:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # ── Poller (SINGLETON — never scale > 1) ─────────────────────────────────────
+  # The 4 req/min rate limit on data.gov.my means exactly ONE poller instance
+  # must exist at all times. Do not use `replicas:` here.
+  poller:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.poller
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Kuala_Lumpur
+      VALKEY_HOST: valkey
+      VALKEY_PORT: "6379"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: basbuddy
+      POSTGRES_USER: basbuddy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      GTFS_REALTIME_URL: https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-kl
+      POLL_INTERVAL_MS: "30000"
+      VEHICLE_TTL_SECONDS: "240"
+      AVG_SPEED_KMH: "25"
+    depends_on:
+      valkey:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    deploy:
+      replicas: 1  # Never change this — see comment above
+
+volumes:
+  valkey_data:
+  postgres_data:

@@ -1,0 +1,143 @@
+/* ─── BasBuddy Design System — "Golden Hour Commute" (§11) ───────────────────
+ *
+ * Color tokens, typography, and base styles.
+ * All UI components use these CSS variables — never hard-coded values.
+ *
+ * Fonts loaded in index.html:
+ *   Display:  Barlow Condensed 600/700    (route numbers, headlines)
+ *   Body/UI:  IBM Plex Sans 400/500/600   (all UI text)
+ *   Data:     IBM Plex Mono 400/500       (ETAs, stop codes, times)
+ */
+
+/* ── Tailwind base ────────────────────────────────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Color tokens ─────────────────────────────────────────────────────────── */
+:root {
+  /* Named palette */
+  --color-mango-peel:   #F4A100;  /* Primary — display type, route numbers */
+  --color-ember-coral:  #FF5A47;  /* Accent — CTAs, live/active states */
+  --color-harbour-navy: #101B2D;  /* Dark background / primary text */
+  --color-warm-ivory:   #FFF8EE;  /* Light background */
+  --color-route-teal:   #1F7A6C;  /* Functional — line/route identification */
+  --color-signal-pink:  #E94B8C;  /* Sparing — "live data" indicators only */
+
+  /* Semantic aliases */
+  --bg-primary:       var(--color-harbour-navy);
+  --bg-surface:       #182337;    /* Slightly lighter than harbour-navy */
+  --bg-elevated:      #1E2D45;
+  --text-primary:     var(--color-warm-ivory);
+  --text-secondary:   #A8B8CC;
+  --text-muted:       #5C7090;
+  --accent-primary:   var(--color-mango-peel);
+  --accent-cta:       var(--color-ember-coral);
+  --accent-live:      var(--color-signal-pink);
+  --border-subtle:    rgba(255,255,255,0.08);
+
+  /* Freshness state colors (§11) */
+  --freshness-live:        var(--color-signal-pink);
+  --freshness-stale:       #C4972A;           /* Muted amber */
+  --freshness-signal-lost: var(--text-muted); /* Gray out */
+
+  /* Typography */
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body:    'IBM Plex Sans', system-ui, sans-serif;
+  --font-data:    'IBM Plex Mono', 'Courier New', monospace;
+
+  /* Spacing / layout */
+  --bottom-sheet-handle-h: 4px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Base reset ───────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Map fills viewport — scrolling happens inside sheets */
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent double-tap zoom on mobile */
+  touch-action: manipulation;
+}
+
+/* ── Leaflet overrides ────────────────────────────────────────────────────── */
+/* Ensure Leaflet tiles sit below our UI elements */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: var(--bg-primary);
+  font-family: var(--font-body);
+}
+
+/* ── Time-of-day gradient backdrop (§11 signature element) ───────────────── */
+/* Applied to the app shell behind the map for pre/post-map areas.
+ * The actual gradient shift is driven by JS in App.tsx based on local hour. */
+.gradient-dawn    { background: linear-gradient(180deg, #0A1628 0%, #1A2E5A 100%); }
+.gradient-morning { background: linear-gradient(180deg, #1A2E5A 0%, #2B4A8A 100%); }
+.gradient-midday  { background: linear-gradient(180deg, #2B4A8A 0%, #1A3C6E 100%); }
+.gradient-golden  { background: linear-gradient(180deg, #C17A00 0%, #FF5A47 60%, #101B2D 100%); }
+.gradient-dusk    { background: linear-gradient(180deg, #4A2C00 0%, #101B2D 100%); }
+.gradient-night   { background: var(--bg-primary); }
+
+/* ── Utility classes ──────────────────────────────────────────────────────── */
+.font-display { font-family: var(--font-display); }
+.font-data    { font-family: var(--font-data); }
+
+.text-live        { color: var(--freshness-live); }
+.text-stale       { color: var(--freshness-stale); }
+.text-signal-lost { color: var(--freshness-signal-lost); }
+
+/* ETA pill (displayed in stop sheet) */
+.eta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-data);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border-subtle);
+}
+.eta-pill.live        { border-color: var(--freshness-live);   color: var(--freshness-live); }
+.eta-pill.stale       { border-color: var(--freshness-stale);  color: var(--freshness-stale); }
+.eta-pill.signal-lost { opacity: 0.5; }
+
+/* Live pulse dot — used next to "live data" labels */
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.8); }
+}
+.live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--freshness-live);
+  animation: pulse-live 1.8s ease-in-out infinite;
+}
+
+/* ── Scrollbar styling (bottom sheet content) ─────────────────────────────── */
+.basbuddy-scroll::-webkit-scrollbar { width: 4px; }
+.basbuddy-scroll::-webkit-scrollbar-track { background: transparent; }
+.basbuddy-scroll::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 2px; }

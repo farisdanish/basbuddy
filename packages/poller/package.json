@@ -1,0 +1,23 @@
+{
+  "name": "@basbuddy/poller",
+  "version": "1.0.0",
+  "private": true,
+  "description": "M2 — GTFS-RT realtime poller: fetch protobuf, compute ETAs, write to Valkey",
+  "scripts": {
+    "dev": "tsx --watch src/poller.ts",
+    "start": "node dist/poller.js",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --build"
+  },
+  "dependencies": {
+    "@basbuddy/shared": "*",
+    "dotenv": "^16.4.5",
+    "gtfs-realtime-bindings": "^1.1.0",
+    "ioredis": "^5.4.1",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.8",
+    "tsx": "^4.19.0"
+  }
+}

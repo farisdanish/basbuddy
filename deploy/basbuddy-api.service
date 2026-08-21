@@ -1,0 +1,18 @@
+[Unit]
+Description=BasBuddy API Server
+After=network.target valkey.service postgresql.service
+
+[Service]
+Type=simple
+User=basbuddy
+WorkingDirectory=/opt/basbuddy
+EnvironmentFile=/opt/basbuddy/.env
+ExecStart=/usr/bin/node packages/api/dist/server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=basbuddy-api
+
+[Install]
+WantedBy=multi-user.target

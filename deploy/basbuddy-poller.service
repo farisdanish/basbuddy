@@ -1,0 +1,18 @@
+[Unit]
+Description=BasBuddy GTFS-RT Poller (SINGLETON — must never run as more than 1 instance)
+After=network.target valkey.service postgresql.service
+
+[Service]
+Type=simple
+User=basbuddy
+WorkingDirectory=/opt/basbuddy
+EnvironmentFile=/opt/basbuddy/.env
+ExecStart=/usr/bin/node packages/poller/dist/poller.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=basbuddy-poller
+
+[Install]
+WantedBy=multi-user.target

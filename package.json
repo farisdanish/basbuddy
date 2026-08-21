@@ -1,0 +1,31 @@
+{
+  "name": "basbuddy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BasBuddy — Unofficial RapidKL Bus Tracker. Data: data.gov.my / Prasarana (CC BY 4.0).",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "ingest": "npm run ingest --workspace=packages/ingestion",
+    "poller": "npm run dev --workspace=packages/poller",
+    "api": "npm run dev --workspace=packages/api",
+    "frontend": "npm run dev --workspace=packages/frontend"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/node": "^20.16.0",
+    "prettier": "^3.3.3",
+    "eslint": "^9.9.0",
+    "@typescript-eslint/eslint-plugin": "^8.3.0",
+    "@typescript-eslint/parser": "^8.3.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

@@ -1,0 +1,27 @@
+FROM node:20-alpine AS base
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/poller/package.json ./packages/poller/
+
+RUN npm ci --workspace=packages/shared --workspace=packages/poller --ignore-scripts
+
+COPY packages/shared ./packages/shared
+COPY packages/poller ./packages/poller
+COPY tsconfig.base.json ./
+
+RUN npm run build --workspace=packages/shared \
+ && npm run build --workspace=packages/poller
+
+FROM node:20-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production TZ=Asia/Kuala_Lumpur
+COPY --from=base /app/packages/shared/dist ./packages/shared/dist
+COPY --from=base /app/packages/shared/package.json ./packages/shared/
+COPY --from=base /app/packages/poller/dist ./packages/poller/dist
+COPY --from=base /app/packages/poller/package.json ./packages/poller/
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/package.json ./
+
+# Poller must be a single instance — see docker-compose.yml
+CMD ["node", "packages/poller/dist/poller.js"]

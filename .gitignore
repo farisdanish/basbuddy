@@ -1,0 +1,32 @@
+# --- Node ---
+node_modules/
+dist/
+build/
+.turbo/
+
+# --- Environment ---
+.env
+.env.local
+.env.*.local
+
+# --- TypeScript ---
+*.tsbuildinfo
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- GTFS ---
+tmp/
+*.zip
+
+# --- IDE & Agent ---
+.vscode/settings.json
+.idea/
+.agent/
+.agents/
