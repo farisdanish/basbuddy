@@ -31,22 +31,30 @@ export function matchVehicle(
   // ── Primary: trip_id present ───────────────────────────────────────────────
   if (entity.tripId) {
     const trip = lookup.trips.get(entity.tripId);
-    if (!trip) {
-      // Known data gap: ~2% of rapid-bus-kl trips are missing from stop_times/trips.
-      // Skip silently rather than crashing (§14 open question).
-      return null;
+    if (trip) {
+      return {
+        tripId: entity.tripId,
+        routeId: trip.routeId,
+        directionId: trip.directionId,
+        shapeId: trip.shapeId,
+        headsign: trip.headsign,
+      };
     }
-    return {
-      tripId: entity.tripId,
-      routeId: trip.routeId,
-      directionId: trip.directionId,
-      shapeId: trip.shapeId,
-      headsign: trip.headsign,
-    };
+    // If trip_id is not in static lookup (e.g. ad-hoc/modified trip),
+    // fall through to shape matching below rather than dropping the entity (§9).
   }
 
-  // ── Fallback: no trip_id ──────────────────────────────────────────────────
-  if (!entity.routeId) {
+  // ── Fallback: match by route + nearest shape ──────────────────────────────
+  let targetRouteId = entity.routeId;
+  if (!targetRouteId && entity.tripId) {
+    // Attempt extracting routeId from RapidKL tripId format (e.g. "weekend_T7280_T728002_0" -> "T7280")
+    const parts = entity.tripId.split('_');
+    if (parts.length >= 2 && parts[1]) {
+      targetRouteId = parts[1];
+    }
+  }
+
+  if (!targetRouteId) {
     // Can't match without at least a route_id
     return null;
   }
@@ -54,7 +62,7 @@ export function matchVehicle(
   // Find all trips for this route
   const candidateTrips: Array<{ tripId: string; shapeId: string; directionId: number; routeId: string; headsign: string }> = [];
   for (const [tripId, trip] of lookup.trips) {
-    if (trip.routeId === entity.routeId) {
+    if (trip.routeId === targetRouteId) {
       candidateTrips.push({ tripId, shapeId: trip.shapeId, directionId: trip.directionId, routeId: trip.routeId, headsign: trip.headsign });
     }
   }
@@ -91,7 +99,7 @@ export function matchVehicle(
 
   // Use the routeId from the matched trip (more reliable than entity.routeId)
   return {
-    tripId: `fallback_${entity.routeId}_${entity.lat.toFixed(4)}_${entity.lon.toFixed(4)}`,
+    tripId: entity.tripId ?? `fallback_${targetRouteId}_${entity.lat.toFixed(4)}_${entity.lon.toFixed(4)}`,
     routeId: bestCandidate.routeId,
     directionId: bestCandidate.directionId,
     shapeId: bestCandidate.shapeId,

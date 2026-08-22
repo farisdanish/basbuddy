@@ -153,7 +153,7 @@ describe('GTFS-RT Poller & ETA Engine', () => {
     it('returns null when tripId is not in lookup and no fallback route matching is possible', () => {
       const match = matchVehicle(
         {
-          tripId: 'non_existent_trip',
+          tripId: 'non_existent_trip_without_route_pattern',
           routeId: null,
           lat: 3.0710,
           lon: 101.5100,
@@ -164,6 +164,44 @@ describe('GTFS-RT Poller & ETA Engine', () => {
       );
 
       expect(match).toBeNull();
+    });
+
+    it('falls back to route/shape matching when tripId is unknown in static trips but routeId is present', () => {
+      const match = matchVehicle(
+        {
+          tripId: 'unknown_adhoc_trip_123',
+          routeId: '753',
+          lat: 3.0720,
+          lon: 101.5100,
+          bearing: 0,
+          gtfsTimestamp: null,
+        },
+        mockLookup,
+      );
+
+      expect(match).not.toBeNull();
+      expect(match?.tripId).toBe('unknown_adhoc_trip_123');
+      expect(match?.routeId).toBe('753');
+      expect(match?.shapeId).toBe('shape_north');
+    });
+
+    it('falls back to route/shape matching when tripId is unknown in static trips and routeId is parsed from tripId', () => {
+      const match = matchVehicle(
+        {
+          tripId: 'weekend_753_block99_0',
+          routeId: null,
+          lat: 3.0720,
+          lon: 101.5100,
+          bearing: 0,
+          gtfsTimestamp: null,
+        },
+        mockLookup,
+      );
+
+      expect(match).not.toBeNull();
+      expect(match?.tripId).toBe('weekend_753_block99_0');
+      expect(match?.routeId).toBe('753');
+      expect(match?.shapeId).toBe('shape_north');
     });
 
     it('performs fallback nearest-shape matching with bearing disambiguation', () => {
