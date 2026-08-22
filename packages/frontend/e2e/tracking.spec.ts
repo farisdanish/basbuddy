@@ -249,12 +249,12 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     // Open stop sheet
     const stopMarkers = page.locator('.stop-marker-icon');
     await expect(stopMarkers.first()).toBeVisible();
-    await stopMarkers.first().click({ force: true });
+    await stopMarkers.first().click();
 
     // Click favorite toggle button
     const favButton = page.getByRole('button', { name: 'Save to favorites' });
     await expect(favButton).toBeVisible();
-    await favButton.click({ force: true });
+    await favButton.click();
 
     // Verify toggle changes to Remove from favorites
     const removeFavButton = page.getByRole('button', { name: 'Remove from favorites' });

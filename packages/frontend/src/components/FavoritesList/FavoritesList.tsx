@@ -77,7 +77,11 @@ export function FavoritesList({
                 {fav.label ?? (isRouteFav ? `Route ${fav.routeId}` : `Stop ${fav.stopId}`)}
               </span>
               <span className="text-[10px] font-mono text-[#FFF8EE]/40 truncate block mt-0.5">
-                {isRouteFav ? `Route ID: ${fav.routeId}` : `Stop ID: ${fav.stopId}`}
+                {isRouteFav
+                  ? `Route ID: ${fav.routeId}`
+                  : fav.routeId
+                    ? `Route ${fav.routeId}`
+                    : `ID: ${fav.stopId}`}
               </span>
             </div>
           </button>
