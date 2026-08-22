@@ -8,35 +8,72 @@ export interface UseFavoritesResult {
   error: string | null;
   addFavorite: (body: CreateFavoriteBody) => Promise<void>;
   removeFavorite: (id: number) => Promise<void>;
+  refetch: () => Promise<void>;
+}
+
+// Module-level shared store for seamless multi-component synchronization
+let sharedFavorites: Favorite[] = [];
+let sharedLoading = true;
+let sharedError: string | null = null;
+let isInitialFetchDone = false;
+const listeners = new Set<() => void>();
+
+function emitChange() {
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+async function fetchFavoritesFromApi() {
+  sharedLoading = true;
+  emitChange();
+  try {
+    const result = await apiGet<FavoritesResponse>('/api/favorites');
+    sharedFavorites = result.favorites ?? [];
+    sharedError = null;
+  } catch (err) {
+    sharedError = err instanceof Error ? err.message : 'Unknown error';
+  } finally {
+    sharedLoading = false;
+    isInitialFetchDone = true;
+    emitChange();
+  }
 }
 
 export function useFavorites(): UseFavoritesResult {
-  const [favorites, setFavorites] = useState<Favorite[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setTick] = useState(0);
 
-  const load = useCallback(async () => {
-    try {
-      const result = await apiGet<FavoritesResponse>('/api/favorites');
-      setFavorites(result.favorites);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    const listener = () => setTick((t) => t + 1);
+    listeners.add(listener);
+
+    if (!isInitialFetchDone) {
+      void fetchFavoritesFromApi();
     }
-  }, []);
 
-  useEffect(() => { void load(); }, [load]);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
 
   const addFavorite = useCallback(async (body: CreateFavoriteBody) => {
     const created = await apiPost<Favorite>('/api/favorites', body);
-    setFavorites((prev) => [created, ...prev]);
+    sharedFavorites = [created, ...sharedFavorites.filter((f) => f.id !== created.id)];
+    emitChange();
   }, []);
 
   const removeFavorite = useCallback(async (id: number) => {
     await apiDelete(`/api/favorites/${id}`);
-    setFavorites((prev) => prev.filter((f) => f.id !== id));
+    sharedFavorites = sharedFavorites.filter((f) => f.id !== id);
+    emitChange();
   }, []);
 
-  return { favorites, loading, error, addFavorite, removeFavorite };
+  return {
+    favorites: sharedFavorites,
+    loading: sharedLoading,
+    error: sharedError,
+    addFavorite,
+    removeFavorite,
+    refetch: fetchFavoritesFromApi,
+  };
 }

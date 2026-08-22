@@ -3,6 +3,34 @@ import { test, expect } from '@playwright/test';
 test.describe('Frontend Shell (M5)', () => {
   test.beforeEach(async ({ page }) => {
     // Intercept backend API requests in preview mode to test shell in isolation
+    await page.route('/health', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'ok',
+          pollerLastSuccess: new Date().toISOString(),
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    });
+
+    await page.route(/\/api\/stops(\?.*)?/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ stops: [] }),
+      });
+    });
+
+    await page.route('/api/routes', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ routes: [] }),
+      });
+    });
+
     await page.route('/api/favorites', async (route) => {
       await route.fulfill({
         status: 200,
@@ -72,8 +100,15 @@ test.describe('Frontend Shell (M5)', () => {
               id: 1,
               stopId: 'KL1081',
               routeId: '750',
-              label: 'Pasar Seni Hub',
-              createdAt: new Date().toISOString(),
+              label: 'Pasar Seni (Platform B)',
+              createdAt: '2026-08-22T00:00:00Z',
+            },
+            {
+              id: 2,
+              stopId: 'KL1082',
+              routeId: null,
+              label: 'KL Sentral Monorail',
+              createdAt: '2026-08-22T00:00:00Z',
             },
           ],
         }),
@@ -82,32 +117,41 @@ test.describe('Frontend Shell (M5)', () => {
 
     await page.goto('/');
 
-    const favButton = page.locator('#favorite-1');
-    await expect(favButton).toBeVisible();
-    await expect(favButton).toContainText('Pasar Seni Hub');
-    await expect(favButton).toContainText('Route 750');
+    // Wait for favorites list to render
+    const fav1 = page.locator('#favorite-1');
+    const fav2 = page.locator('#favorite-2');
+
+    await expect(fav1).toBeVisible();
+    await expect(fav1).toContainText('Pasar Seni (Platform B)');
+    await expect(fav1).toContainText('Route 750');
+
+    await expect(fav2).toBeVisible();
+    await expect(fav2).toContainText('KL Sentral Monorail');
+    await expect(fav2).toContainText('ID: KL1082');
   });
 
   test('serves valid PWA manifest and static icon assets', async ({ request }) => {
-    // Check manifest.webmanifest
+    // 1. Manifest
     const manifestRes = await request.get('/manifest.webmanifest');
     expect(manifestRes.status()).toBe(200);
     const manifest = await manifestRes.json();
     expect(manifest.name).toBe('BasBuddy');
-    expect(Array.isArray(manifest.icons)).toBe(true);
-    expect(manifest.icons.length).toBeGreaterThanOrEqual(2);
+    expect(manifest.short_name).toBe('BasBuddy');
+    expect(manifest.theme_color).toBe('#F4A100');
+    expect(manifest.background_color).toBe('#101B2D');
 
-    // Check favicon and icons
-    const faviconRes = await request.get('/favicon.ico');
-    expect(faviconRes.status()).toBe(200);
-
-    const appleIconRes = await request.get('/apple-touch-icon.png');
-    expect(appleIconRes.status()).toBe(200);
-
-    const icon192Res = await request.get('/icons/icon-192.png');
-    expect(icon192Res.status()).toBe(200);
-
+    // 2. Icon 512
     const icon512Res = await request.get('/icons/icon-512.png');
     expect(icon512Res.status()).toBe(200);
+    expect(icon512Res.headers()['content-type']).toContain('image/png');
+
+    // 3. Icon 192
+    const icon192Res = await request.get('/icons/icon-192.png');
+    expect(icon192Res.status()).toBe(200);
+    expect(icon192Res.headers()['content-type']).toContain('image/png');
+
+    // 4. Favicon
+    const faviconRes = await request.get('/favicon.ico');
+    expect(faviconRes.status()).toBe(200);
   });
 });

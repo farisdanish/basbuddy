@@ -24,33 +24,47 @@ export function freshnessClass(freshness: FreshnessStatus): string {
 
 interface ArrivalRowProps {
   arrival: StopArrival;
+  onSelectRoute?: (routeId: string) => void;
 }
 
-export function ArrivalRow({ arrival }: ArrivalRowProps) {
+export function ArrivalRow({ arrival, onSelectRoute }: ArrivalRowProps) {
   const cls = freshnessClass(arrival.freshness);
 
   return (
-    <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)] last:border-0">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between py-3.5 border-b border-white/5 last:border-0 hover:bg-white/[0.02] px-2 rounded-xl transition-colors">
+      <div className="flex items-center gap-3.5 min-w-0 pr-2">
         {/* Route number badge */}
-        <span
-          className="font-display text-lg font-bold px-2 py-0.5 rounded"
-          style={{ background: 'var(--color-mango-peel)', color: 'var(--color-harbour-navy)' }}
+        <button
+          type="button"
+          onClick={() => onSelectRoute?.(arrival.routeId)}
+          title={`Highlight route ${arrival.routeShortName}`}
+          className="flex items-center justify-center min-w-[48px] h-9 px-2 rounded-lg bg-[#F4A100] text-[#101B2D] font-display text-lg font-bold shadow-md hover:scale-105 active:scale-95 transition-all shrink-0 select-none"
         >
           {arrival.routeShortName}
-        </span>
-        <div>
-          <p className="text-sm font-medium text-[var(--text-primary)]">{arrival.tripHeadsign}</p>
-          {arrival.source === 'schedule' && (
-            <p className="text-xs text-[var(--text-muted)]">Schedule estimate</p>
-          )}
+        </button>
+
+        <div className="min-w-0">
+          <p className="text-sm font-sans font-semibold text-[#FFF8EE] truncate">
+            {arrival.tripHeadsign}
+          </p>
+          <p className="text-xs font-sans text-[#FFF8EE]/50 flex items-center gap-1.5 mt-0.5">
+            {arrival.source === 'schedule' ? (
+              <span>Schedule estimate</span>
+            ) : arrival.freshness === 'stale' ? (
+              <span className="text-amber-400/80">Stale GPS feed</span>
+            ) : (
+              <span className="text-emerald-400/80">Live vehicle tracked</span>
+            )}
+          </p>
         </div>
       </div>
 
       {/* ETA pill */}
-      <div className={`eta-pill ${cls}`}>
+      <div className={`eta-pill ${cls} shrink-0 select-none`}>
         {arrival.freshness === 'live' && <span className="live-dot" />}
-        <span className="font-data">{formatEta(arrival.etaSeconds)}</span>
+        <span className="font-data font-medium text-xs">
+          {formatEta(arrival.etaSeconds)}
+        </span>
       </div>
     </div>
   );
