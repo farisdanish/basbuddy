@@ -3,15 +3,18 @@ import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 import { useGeolocation } from './hooks/useGeolocation.ts';
 import { useNearbyStops } from './hooks/useNearbyStops.ts';
 import { useSystemHealth } from './hooks/useSystemHealth.ts';
+import { useRouteDetails } from './hooks/useRouteDetails.ts';
 
 import { StopMarkersLayer } from './components/Map/StopMarkersLayer.tsx';
 import { VehicleMarkersLayer } from './components/Map/VehicleMarkersLayer.tsx';
+import { RoutePolylineLayer } from './components/Map/RoutePolylineLayer.tsx';
 import { UserLocationMarker } from './components/Map/UserLocationMarker.tsx';
 import { RecenterButton } from './components/Map/RecenterButton.tsx';
 
 import { SearchHeader } from './components/Search/SearchHeader.tsx';
 import { SearchOverlay } from './components/Search/SearchOverlay.tsx';
 import { DegradedBanner } from './components/DegradedBanner.tsx';
+import { RouteTrackerSheet } from './components/RouteSheet/RouteTrackerSheet.tsx';
 
 import { StopSheet } from './components/StopSheet/StopSheet.tsx';
 import { FavoritesList } from './components/FavoritesList/FavoritesList.tsx';
@@ -82,6 +85,7 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   const { stops } = useNearbyStops(mapCenter[0], mapCenter[1]);
+  const { data: routeData, loading: routeLoading } = useRouteDetails(selectedRouteId);
   const health = useSystemHealth();
 
   const handleCenterChange = useCallback((newCenter: [number, number]) => {
@@ -98,15 +102,6 @@ export default function App() {
 
   return (
     <div className={`relative h-full w-full overflow-hidden ${gradientClass}`}>
-      {/* ── Top Floating Search & System Status ─────────────────────────────── */}
-      <SearchHeader
-        onOpenSearch={() => setSearchOpen(true)}
-        systemStatus={health.status}
-      />
-
-      {/* ── Stale / Degraded Feed Warning Banner ─────────────────────────────── */}
-      <DegradedBanner health={health} />
-
       {/* ── Full-Screen Map Canvas ─────────────────────────────────────────── */}
       <MapContainer
         center={initialCenter}
@@ -122,14 +117,41 @@ export default function App() {
 
         <MapViewportSync onCenterChange={handleCenterChange} />
         <UserLocationMarker position={position} />
+        <RoutePolylineLayer
+          routeData={routeData}
+          onSelectStop={handleSelectStop}
+        />
         <StopMarkersLayer
           stops={stops}
           selectedStopId={selectedStopId}
           onSelectStop={handleSelectStop}
         />
-        <VehicleMarkersLayer routeId={selectedRouteId} />
+        <VehicleMarkersLayer
+          routeId={selectedRouteId}
+          vehicles={routeData?.vehicles ?? []}
+          routeShortName={routeData?.routeShortName}
+        />
         <RecenterButton position={position} defaultCenter={KL_CENTER} />
       </MapContainer>
+
+      {/* ── Top Floating Search & System Status ─────────────────────────────── */}
+      <SearchHeader
+        onOpenSearch={() => setSearchOpen(true)}
+        systemStatus={health.status}
+      />
+
+      {/* ── Active Route Inspector Floating Card ─────────────────────────────── */}
+      {selectedRouteId && (
+        <RouteTrackerSheet
+          routeData={routeData}
+          loading={routeLoading}
+          onClose={() => setSelectedRouteId(null)}
+          onSelectStop={handleSelectStop}
+        />
+      )}
+
+      {/* ── Stale / Degraded Feed Warning Banner ─────────────────────────────── */}
+      {!selectedRouteId && <DegradedBanner health={health} />}
 
       {/* ── Search Modal Overlay ────────────────────────────────────────────── */}
       <SearchOverlay

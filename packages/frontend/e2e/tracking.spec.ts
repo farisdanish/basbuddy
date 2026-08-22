@@ -18,7 +18,7 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     // Stateful mock favorites store
     let mockFavorites: Array<{ id: number; stopId: string; routeId: string | null; label: string; createdAt: string }> = [];
 
-    await page.route(/\/api\/favorites(\/\d+)?/, async (route) => {
+    await page.route('**/api/favorites**', async (route) => {
       const method = route.request().method();
       if (method === 'GET') {
         await route.fulfill({
@@ -49,35 +49,85 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
       }
     });
 
-    // Mock nearby stops
-    await page.route(/\/api\/stops\?near=.*/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          origin: { lat: 3.139, lon: 101.6869 },
-          stops: [
-            {
-              stopId: 'KL1081',
-              stopName: 'Pasar Seni Platform B',
-              lat: 3.1425,
-              lon: 101.696,
-              distanceMeters: 350,
-            },
-            {
-              stopId: 'KL1082',
-              stopName: 'KL Sentral Monorail',
-              lat: 3.133,
-              lon: 101.687,
-              distanceMeters: 480,
-            },
-          ],
-        }),
-      });
-    });
+    // Mock stops (nearby, static list, and ETAs)
+    await page.route('**/api/stops**', async (route) => {
+      const url = new URL(route.request().url());
+      const path = url.pathname;
 
-    // Mock unscoped static stops & routes for search
-    await page.route('/api/stops', async (route) => {
+      if (path.includes('/etas')) {
+        const stopId = path.split('/')[3] || 'KL1081';
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            stopId,
+            stopName: stopId === 'KL1092' ? 'Mid Valley North Court' : 'Pasar Seni Platform B',
+            generatedAt: new Date().toISOString(),
+            arrivals: [
+              {
+                tripId: 'TRIP-750-1',
+                routeId: '750',
+                routeShortName: '750',
+                tripHeadsign: 'Shah Alam Seksyen 2',
+                etaSeconds: 180,
+                source: 'live',
+                freshness: 'live',
+                vehicle: { lat: 3.141, lon: 101.693, bearing: 280 },
+              },
+              {
+                tripId: 'TRIP-772-1',
+                routeId: '772',
+                routeShortName: '772',
+                tripHeadsign: 'Subang Suria',
+                etaSeconds: 660,
+                source: 'live',
+                freshness: 'live',
+                vehicle: { lat: 3.138, lon: 101.689, bearing: 190 },
+              },
+              {
+                tripId: 'TRIP-601-1',
+                routeId: '601',
+                routeShortName: '601',
+                tripHeadsign: 'Puchong Utama',
+                etaSeconds: 1440,
+                source: 'schedule',
+                freshness: 'signal_lost',
+                vehicle: null,
+              },
+            ],
+          }),
+        });
+        return;
+      }
+
+      if (url.searchParams.has('near')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            origin: { lat: 3.139, lon: 101.6869 },
+            stops: [
+              {
+                stopId: 'KL1081',
+                stopName: 'Pasar Seni Platform B',
+                lat: 3.1425,
+                lon: 101.696,
+                distanceMeters: 350,
+              },
+              {
+                stopId: 'KL1082',
+                stopName: 'KL Sentral Monorail',
+                lat: 3.133,
+                lon: 101.687,
+                distanceMeters: 480,
+              },
+            ],
+          }),
+        });
+        return;
+      }
+
+      // Static stop list
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -91,74 +141,78 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
       });
     });
 
-    await page.route('/api/routes', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          routes: [
-            { routeId: '750', routeShortName: '750', routeLongName: 'Pasar Seni - Seksyen 2 Shah Alam', routeColor: 'F4A100' },
-            { routeId: '772', routeShortName: '772', routeLongName: 'Pasar Seni - Subang Suria', routeColor: 'F4A100' },
-          ],
-        }),
-      });
-    });
+    // Consolidated Mock for /api/routes and all sub-routes
+    await page.route('**/api/routes**', async (route) => {
+      const url = new URL(route.request().url());
+      const path = url.pathname;
 
-    // Mock Stop ETAs for KL1081
-    await page.route(/\/api\/stops\/KL1081\/etas/, async (route) => {
+      if (path.endsWith('/vehicles')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            routeId: '750',
+            vehicles: [
+              {
+                tripId: 'TRIP-750-1',
+                routeId: '750',
+                lat: 3.118,
+                lon: 101.677,
+                bearing: 270,
+                timestamp: new Date().toISOString(),
+                freshness: 'live',
+              },
+            ],
+          }),
+        });
+        return;
+      }
+
+      if (path === '/api/routes' || path === '/api/routes/') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            routes: [
+              { routeId: '750', routeShortName: '750', routeLongName: 'Pasar Seni - Seksyen 2 Shah Alam', routeColor: 'F4A100' },
+              { routeId: '772', routeShortName: '772', routeLongName: 'Pasar Seni - Subang Suria', routeColor: 'F4A100' },
+            ],
+          }),
+        });
+        return;
+      }
+
+      // Specific route details
+      const routeId = path.split('/').filter(Boolean).pop() || '750';
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          stopId: 'KL1081',
-          stopName: 'Pasar Seni Platform B',
-          generatedAt: new Date().toISOString(),
-          arrivals: [
+          routeId,
+          routeShortName: routeId === 'T7280' ? 'T728' : routeId,
+          routeLongName: routeId === 'T7280' ? 'Stesen LRT Pasar Klang ~ Setia City' : 'Pasar Seni - Seksyen 2 Shah Alam',
+          routeColor: 'F4A100',
+          directions: [{ directionId: 0, tripHeadsign: 'Seksyen 2 Shah Alam' }],
+          shapes: [
+            [3.1425, 101.696],
+            [3.118, 101.677],
+            [3.072, 101.518],
+          ],
+          stops: [
+            { stopId: 'KL1081', stopName: 'Pasar Seni Platform B', lat: 3.1425, lon: 101.696, stopSequence: 1 },
+            { stopId: 'KL1092', stopName: 'Mid Valley North Court', lat: 3.118, lon: 101.677, stopSequence: 2 },
+          ],
+          vehicles: [
             {
-              tripId: 'TRIP-750-1',
-              routeId: '750',
-              routeShortName: '750',
-              tripHeadsign: 'Shah Alam Seksyen 2',
-              etaSeconds: 180,
-              source: 'live',
+              tripId: `TRIP-${routeId}-1`,
+              routeId,
+              lat: 3.118,
+              lon: 101.677,
+              bearing: 270,
+              timestamp: new Date().toISOString(),
               freshness: 'live',
-              vehicle: { lat: 3.141, lon: 101.693, bearing: 280 },
-            },
-            {
-              tripId: 'TRIP-772-1',
-              routeId: '772',
-              routeShortName: '772',
-              tripHeadsign: 'Subang Suria',
-              etaSeconds: 660,
-              source: 'live',
-              freshness: 'live',
-              vehicle: { lat: 3.138, lon: 101.689, bearing: 190 },
-            },
-            {
-              tripId: 'TRIP-601-1',
-              routeId: '601',
-              routeShortName: '601',
-              tripHeadsign: 'Puchong Utama',
-              etaSeconds: 1440,
-              source: 'schedule',
-              freshness: 'signal_lost',
-              vehicle: null,
             },
           ],
-        }),
-      });
-    });
-
-    // Mock Stop ETAs for other stops
-    await page.route(/\/api\/stops\/(?!KL1081)[^/]+\/etas/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          stopId: 'OTHER',
-          stopName: 'Other Stop',
-          generatedAt: new Date().toISOString(),
-          arrivals: [],
         }),
       });
     });
@@ -238,6 +292,34 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
 
     // Verify search overlay closes and StopSheet opens
     await expect(searchInput).not.toBeVisible();
+  });
+
+  test('selecting a route from search overlay highlights route polyline and opens RouteTrackerSheet', async ({ page }) => {
+    await page.goto('/');
+
+    // Click search header
+    const searchTrigger = page.getByRole('button', { name: 'Search stops, routes, hubs' });
+    await searchTrigger.click({ force: true });
+
+    const searchInput = page.getByPlaceholder('Search stops, routes...');
+    await searchInput.fill('750');
+
+    // Click route result
+    const routeButton = page.getByRole('button', { name: /750.*Pasar Seni/i });
+    await expect(routeButton).toBeVisible({ timeout: 5000 });
+    await routeButton.click();
+
+    // Verify RouteTrackerSheet opens with title and active live bus count
+    const routeInspector = page.getByRole('complementary', { name: 'Route inspector' });
+    await expect(routeInspector).toBeVisible({ timeout: 5000 });
+    await expect(routeInspector).toContainText('750');
+    await expect(routeInspector).toContainText('Pasar Seni - Seksyen 2 Shah Alam');
+    await expect(routeInspector).toContainText('1 bus live');
+
+    // Close route inspector
+    const closeBtn = page.getByRole('button', { name: 'Close route inspector' });
+    await closeBtn.click({ force: true });
+    await expect(routeInspector).not.toBeVisible();
   });
 
   test('degraded feed warning banner appears when poller heartbeat exceeds staleness threshold', async ({ page }) => {

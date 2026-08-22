@@ -146,6 +146,7 @@ export function SearchOverlay({
               {routes.map((route) => (
                 <button
                   key={route.routeId}
+                  data-testid={`search-route-${route.routeId}`}
                   type="button"
                   onClick={() => {
                     onSelectRoute(route.routeId);

@@ -102,6 +102,30 @@ export interface RoutesResponse {
   routes: RouteListItem[];
 }
 
+export interface RouteStopItem {
+  stopId: string;
+  stopName: string;
+  lat: number;
+  lon: number;
+  stopSequence: number;
+}
+
+export interface RouteDirection {
+  directionId: number;
+  tripHeadsign: string;
+}
+
+export interface RouteDetailsResponse {
+  routeId: string;
+  routeShortName: string;
+  routeLongName: string;
+  routeColor: string;
+  directions: RouteDirection[];
+  shapes: Array<[lat: number, lon: number]>;
+  stops: RouteStopItem[];
+  vehicles: LiveVehicle[];
+}
+
 // ── GET /api/routes/:routeId/vehicles ─────────────────────────────────────────
 
 export interface LiveVehicle {

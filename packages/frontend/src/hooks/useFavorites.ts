@@ -15,7 +15,6 @@ export interface UseFavoritesResult {
 let sharedFavorites: Favorite[] = [];
 let sharedLoading = true;
 let sharedError: string | null = null;
-let isInitialFetchDone = false;
 const listeners = new Set<() => void>();
 
 function emitChange() {
@@ -35,7 +34,6 @@ async function fetchFavoritesFromApi() {
     sharedError = err instanceof Error ? err.message : 'Unknown error';
   } finally {
     sharedLoading = false;
-    isInitialFetchDone = true;
     emitChange();
   }
 }
@@ -47,9 +45,7 @@ export function useFavorites(): UseFavoritesResult {
     const listener = () => setTick((t) => t + 1);
     listeners.add(listener);
 
-    if (!isInitialFetchDone) {
-      void fetchFavoritesFromApi();
-    }
+    void fetchFavoritesFromApi();
 
     return () => {
       listeners.delete(listener);

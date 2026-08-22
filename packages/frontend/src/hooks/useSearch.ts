@@ -11,10 +11,13 @@ export interface UseSearchResult {
   error: string | null;
 }
 
+let cachedStops: StopListItem[] | null = null;
+let cachedRoutes: RouteListItem[] | null = null;
+
 export function useSearch(query: string, category: SearchCategory = 'all'): UseSearchResult {
-  const [allStops, setAllStops] = useState<StopListItem[]>([]);
-  const [allRoutes, setAllRoutes] = useState<RouteListItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [allStops, setAllStops] = useState<StopListItem[]>(() => cachedStops ?? []);
+  const [allRoutes, setAllRoutes] = useState<RouteListItem[]>(() => cachedRoutes ?? []);
+  const [loading, setLoading] = useState(!cachedStops || !cachedRoutes);
   const [error, setError] = useState<string | null>(null);
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
@@ -28,6 +31,8 @@ export function useSearch(query: string, category: SearchCategory = 'all'): UseS
 
   // Load static stops & routes once
   useEffect(() => {
+    if (cachedStops && cachedRoutes) return;
+
     let mounted = true;
     const loadStaticData = async () => {
       setLoading(true);
@@ -37,8 +42,10 @@ export function useSearch(query: string, category: SearchCategory = 'all'): UseS
           apiGet<RoutesResponse>('/api/routes'),
         ]);
         if (mounted) {
-          setAllStops(stopsRes.stops ?? []);
-          setAllRoutes(routesRes.routes ?? []);
+          cachedStops = stopsRes.stops ?? [];
+          cachedRoutes = routesRes.routes ?? [];
+          setAllStops(cachedStops);
+          setAllRoutes(cachedRoutes);
           setError(null);
         }
       } catch (err) {
@@ -51,7 +58,9 @@ export function useSearch(query: string, category: SearchCategory = 'all'): UseS
     };
 
     void loadStaticData();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const { stops, routes } = useMemo(() => {
