@@ -84,6 +84,12 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.pollerAgeSeconds).toBe(-1);
       expect(res.body.pollerLastSuccess).toBeNull();
     });
+
+    it('mounts same health check at /api/health', async () => {
+      const res = await request(app).get('/api/health');
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('degraded');
+    });
   });
 
   // ── 2. GET /api/stops ──────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
   test.beforeEach(async ({ page }) => {
     // Mock default health as live
-    await page.route('/health', async (route) => {
+    await page.route(/\/api\/health|\/health/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -243,7 +243,7 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
   test('degraded feed warning banner appears when poller heartbeat exceeds staleness threshold', async ({ page }) => {
     // Override health check with stale timestamp (3 minutes ago)
     const staleTime = new Date(Date.now() - 180_000).toISOString();
-    await page.route('/health', async (route) => {
+    await page.route(/\/api\/health|\/health/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

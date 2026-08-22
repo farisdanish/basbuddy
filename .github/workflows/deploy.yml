@@ -57,6 +57,7 @@ jobs:
             sudo systemctl restart basbuddy-api
             sudo systemctl restart basbuddy-poller
             sudo systemctl enable --now basbuddy-ingest.timer
+            sudo systemctl start basbuddy-ingest.service || true
 
             echo "=== 6. Reloading Caddy ==="
             sudo systemctl reload caddy

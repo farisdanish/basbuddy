@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Frontend Shell (M5)', () => {
   test.beforeEach(async ({ page }) => {
     // Intercept backend API requests in preview mode to test shell in isolation
-    await page.route('/health', async (route) => {
+    await page.route(/\/api\/health|\/health/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

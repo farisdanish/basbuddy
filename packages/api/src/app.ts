@@ -42,7 +42,7 @@ export function createApp(options: AppOptions): Express {
   app.use('/api', favoritesRouter);
 
   // ── Health Check (Poller Heartbeat & Liveness) ──────────────────────────────
-  app.get('/health', async (_req, res) => {
+  const healthHandler = async (_req: express.Request, res: express.Response) => {
     const v = _req.app.locals['valkey'] as Redis;
     const pollerLastSuccess = await v.get(VALKEY_KEYS.pollerLastSuccess);
     const liveness = checkPollerLiveness(pollerLastSuccess);
@@ -57,7 +57,10 @@ export function createApp(options: AppOptions): Express {
       timestamp: new Date().toISOString(),
     };
     res.json(response);
-  });
+  };
+
+  app.get('/health', healthHandler);
+  app.get('/api/health', healthHandler);
 
   // 404 catch-all
   app.use((_req, res) => {

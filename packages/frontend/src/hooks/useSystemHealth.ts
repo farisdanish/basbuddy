@@ -27,7 +27,7 @@ export function useSystemHealth(): UseSystemHealthResult {
 
   const checkHealth = useCallback(async () => {
     try {
-      const res = await apiGet<HealthResponse>('/health');
+      const res = await apiGet<HealthResponse>('/api/health');
       setIsOnline(true);
 
       if (!res.pollerLastSuccess) {

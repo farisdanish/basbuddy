@@ -9,8 +9,14 @@ basbuddy.farisantoni.com {
         Referrer-Policy "strict-origin-when-cross-origin"
     }
 
-    # Proxy REST API requests to Express backend
+    # Proxy REST API and health check requests to Express backend
     handle /api/* {
+        reverse_proxy 127.0.0.1:3001 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    handle /health {
         reverse_proxy 127.0.0.1:3001 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-Proto {scheme}
