@@ -38,29 +38,24 @@ async function main(): Promise<void> {
   const direction = (process.argv[2] === 'down' ? 'down' : 'up') as 'up' | 'down';
   const migrationsDir = findMigrationsDir();
 
-  let databaseUrl = process.env.DATABASE_URL;
+  let databaseUrl: string | undefined;
 
-  if (!databaseUrl) {
-    const user = process.env.POSTGRES_USER || 'basbuddy';
-    const password = process.env.POSTGRES_PASSWORD;
-    const host = process.env.POSTGRES_HOST || 'localhost';
-    const port = process.env.POSTGRES_PORT || '5432';
-    const db = process.env.POSTGRES_DB || 'basbuddy';
+  const user = process.env.POSTGRES_USER || 'basbuddy';
+  const password = process.env.POSTGRES_PASSWORD;
+  const host = process.env.POSTGRES_HOST || '127.0.0.1';
+  const port = process.env.POSTGRES_PORT || '5432';
+  const db = process.env.POSTGRES_DB || 'basbuddy';
 
-    if (password) {
-      databaseUrl = `postgresql://${user}:${encodeURIComponent(password)}@${host}:${port}/${db}`;
-    } else {
-      // Unauthenticated fallback
-      databaseUrl = `postgresql://${user}@${host}:${port}/${db}`;
-    }
+  if (password) {
+    databaseUrl = `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${db}`;
+  } else if (process.env.DATABASE_URL) {
+    databaseUrl = process.env.DATABASE_URL;
+  } else {
+    databaseUrl = `postgresql://${encodeURIComponent(user)}@${host}:${port}/${db}`;
   }
 
-  if (!databaseUrl) {
-    console.error('[migrate] Error: Neither DATABASE_URL nor POSTGRES_PASSWORD is set in environment.');
-    console.error('[migrate] Ensure /etc/basbuddy/.env or local .env exists with valid database credentials.');
-    process.exit(1);
-  }
-
+  const maskedUrl = databaseUrl ? databaseUrl.replace(/:([^:@/]+)@/, ':****@') : 'undefined';
+  console.log(`[migrate] Target database: ${maskedUrl}`);
   console.log(`[migrate] Running database migrations (${direction})...`);
   console.log(`[migrate] Migrations directory: ${migrationsDir}`);
 
