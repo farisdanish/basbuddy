@@ -69,7 +69,7 @@ cp .env.example .env
 ### 3. Run database migrations
 
 ```bash
-npm run migrate --workspace=packages/api
+npm run migrate
 ```
 
 ### 4. Run the ingestion script (M1)
@@ -101,19 +101,40 @@ npm run frontend
 # Default: http://localhost:5173
 ```
 
+### 8. Run unit test suite
+
+```bash
+npm test
+# Runs Vitest tests for GTFS parsers and Poller/ETA engine
+```
+
+---
+
+## Production Architecture & Deployment
+
+BasBuddy is designed to run on any Linux host with minimal operational overhead:
+
+- **Reverse Proxy & TLS**: Caddy reverse proxy routing `/api/*` to the Express backend (`:3001`) and serving the built Vite PWA static bundle for frontend requests with automatic HTTPS.
+- **Service Management**: Systemd daemon units for process isolation and auto-restart on failure:
+  - `basbuddy-api.service`: Stateless REST API server reading from Valkey & Postgres.
+  - `basbuddy-poller.service`: Single-instance GTFS-RT poller running continuous 30s drift-corrected cycles.
+  - `basbuddy-ingest.timer` / `.service`: Scheduled daily cron updating static GTFS schedule feeds.
+- **CI/CD Pipeline**: GitHub Actions (`.github/workflows/ci.yml` & `deploy.yml`) running automated typechecks, unit tests, and Playwright E2E smoke tests before automated deployment.
+
 ---
 
 ## Milestones
 
 | # | Scope | Status |
 |---|---|---|
-| M1 | Ingestion script — static GTFS → Postgres | ✅ |
-| M2 | Poller + Valkey cache — GTFS-RT → ETAs | ✅ |
-| M3 | ETA engine — distance-along-route + naive speed model | 🔲 |
-| M4 | REST API — Express endpoints per contract | 🔲 |
-| M5 | Frontend shell — React + Vite + map scaffold | 🔲 |
-| M6 | Frontend wired — live markers, stop ETA sheet, polling hooks | 🔲 |
-| M7 | Favourites CRUD, mobile polish, Oracle VM deploy | 🔲 |
+| M1 | Ingestion script — static GTFS → Postgres upsert pipeline | ✅ Complete |
+| M2 | Poller & Valkey cache — GTFS-RT 30s poller + vehicle-to-shape ETA engine | ✅ Complete |
+| M3 | CI/CD & Deployment — GitHub Actions automated deployment pipeline, systemd units, Caddy reverse proxy | ✅ Complete & Live |
+| M4 | REST API — Express endpoints (`/routes`, `/stops/:id/etas`, `/stops/near`, etc.) | 🟡 Next |
+| M5 | Frontend Shell — React 18 + Vite PWA + Leaflet map container + Golden Hour theme | 🟡 Next |
+| M6 | Frontend Live Tracking — Live bus markers, StopBottomSheet, favourites, signal-lost UI | 🔲 Planned |
+
+---
 
 ## Data Source & Attribution
 
