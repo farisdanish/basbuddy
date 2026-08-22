@@ -59,6 +59,19 @@ export interface StopEtasResponse {
   arrivals: StopArrival[];
 }
 
+// ── GET /api/stops (All / Unscoped) ───────────────────────────────────────────
+
+export interface StopListItem {
+  stopId: string;
+  stopName: string;
+  lat: number;
+  lon: number;
+}
+
+export interface AllStopsResponse {
+  stops: StopListItem[];
+}
+
 // ── GET /api/stops?near=lat,lon ───────────────────────────────────────────────
 
 export interface NearbyStop {
@@ -128,9 +141,23 @@ export interface CreateFavoriteBody {
   label?: string;
 }
 
+// ── GET /health ───────────────────────────────────────────────────────────────
+
+export type HealthStatus = 'ok' | 'degraded';
+
+export interface HealthResponse {
+  status: HealthStatus;
+  pollerHealthy: boolean;
+  /** Age of last successful poll cycle in seconds. -1 if no heartbeat recorded. */
+  pollerAgeSeconds: number;
+  pollerLastSuccess: string | null;
+  timestamp: string;
+}
+
 // ── Error shape ───────────────────────────────────────────────────────────────
 
 export interface ApiError {
   error: string;
   message?: string;
 }
+

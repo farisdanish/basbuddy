@@ -7,6 +7,7 @@ import {
   parseGtfsTime,
   type StopEtasResponse,
   type NearbyStopsResponse,
+  type AllStopsResponse,
   type StopArrival,
 } from '@basbuddy/shared';
 
@@ -20,12 +21,26 @@ stopsRouter.get('/stops', async (req, res) => {
   const { near, radiusMeters: radiusStr, limit: limitStr } = req.query;
 
   if (!near || typeof near !== 'string') {
-    // Return all stops (unscoped) if no ?near param — useful for search
+    // Return all stops (unscoped) if no ?near param — useful for search.
+    // Note: LIMIT 500 is an intentional v1 constraint for RapidKL bus search.
+    // Future multi-modal stop additions can expand this with cursor pagination.
     try {
       const result = await pool.query<{
-        stop_id: string; stop_name: string; stop_lat: number; stop_lon: number;
+        stop_id: string;
+        stop_name: string;
+        stop_lat: number;
+        stop_lon: number;
       }>('SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops ORDER BY stop_name LIMIT 500');
-      res.json({ stops: result.rows.map((r) => ({ stopId: r.stop_id, stopName: r.stop_name, lat: r.stop_lat, lon: r.stop_lon })) });
+
+      const response: AllStopsResponse = {
+        stops: result.rows.map((r) => ({
+          stopId: r.stop_id,
+          stopName: r.stop_name,
+          lat: r.stop_lat,
+          lon: r.stop_lon,
+        })),
+      };
+      res.json(response);
     } catch (err) {
       console.error('[api/stops] DB error:', err);
       res.status(500).json({ error: 'internal_error' });
@@ -50,7 +65,10 @@ stopsRouter.get('/stops', async (req, res) => {
     const lonDelta = radiusMeters / (111_320 * Math.cos((lat * Math.PI) / 180));
 
     const result = await pool.query<{
-      stop_id: string; stop_name: string; stop_lat: number; stop_lon: number;
+      stop_id: string;
+      stop_name: string;
+      stop_lat: number;
+      stop_lon: number;
     }>(
       `SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops
        WHERE stop_lat BETWEEN $1 AND $2 AND stop_lon BETWEEN $3 AND $4`,
@@ -102,9 +120,10 @@ stopsRouter.get('/stops/:stopId/etas', async (req, res) => {
     const cached = await valkey.get(VALKEY_KEYS.stopEtas(stopId));
     if (cached) {
       const parsed = JSON.parse(cached) as StopEtasResponse;
-      // Enrich stop_name if it was written as empty by the poller (TODO in cycle.ts)
+      // Defense-in-depth: enrich stopName if absent from legacy/external cached payloads
       if (!parsed.stopName) parsed.stopName = stopName;
-      res.json(parsed);
+      const response: StopEtasResponse = parsed;
+      res.json(response);
       return;
     }
 
@@ -176,6 +195,7 @@ stopsRouter.get('/stops/:stopId/etas', async (req, res) => {
     res.status(500).json({ error: 'internal_error' });
   }
 });
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

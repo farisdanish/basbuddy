@@ -24,6 +24,32 @@ export const VEHICLE_TTL_SECONDS = 240;
  */
 export const POLLER_STALENESS_THRESHOLD_SECONDS = 90;
 
+/**
+ * Checks whether the poller's heartbeat is alive and within the freshness threshold.
+ *
+ * @param lastSuccessIso ISO string of poller:last_success key, or null if missing.
+ * @param now Epoch milliseconds for current time (defaults to Date.now()).
+ * @param thresholdSeconds Maximum allowable age before flagging stale (defaults to 90s).
+ */
+export function checkPollerLiveness(
+  lastSuccessIso: string | null,
+  now: number = Date.now(),
+  thresholdSeconds: number = POLLER_STALENESS_THRESHOLD_SECONDS,
+): { healthy: boolean; ageSeconds: number } {
+  if (!lastSuccessIso) {
+    return { healthy: false, ageSeconds: Infinity };
+  }
+  const lastSuccessTime = new Date(lastSuccessIso).getTime();
+  if (isNaN(lastSuccessTime)) {
+    return { healthy: false, ageSeconds: Infinity };
+  }
+  const ageSeconds = Math.max(0, (now - lastSuccessTime) / 1000);
+  return {
+    healthy: ageSeconds <= thresholdSeconds,
+    ageSeconds,
+  };
+}
+
 // ── VehiclePositionCache ──────────────────────────────────────────────────────
 
 /**

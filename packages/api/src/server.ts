@@ -1,12 +1,8 @@
 import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import compression from 'compression';
 import { Redis } from 'ioredis';
 import { Pool } from 'pg';
-import { routesRouter } from './routes/routes.js';
-import { stopsRouter } from './routes/stops.js';
-import { favoritesRouter } from './routes/favorites.js';
+import { createApp } from './app.js';
+
 
 // ─── BasBuddy API Server ───────────────────────────────────────────────────────
 // Stateless — reads from Valkey (realtime cache) and Postgres (static schedule).
@@ -38,40 +34,17 @@ async function main(): Promise<void> {
   });
 
   // ── Express app ────────────────────────────────────────────────────────────
-  const app = express();
-
-  app.use(compression());
-  app.use(cors({ origin: CORS_ORIGINS, methods: ['GET', 'POST', 'DELETE'] }));
-  app.use(express.json());
-
-  // Attach shared dependencies so route handlers can access them
-  app.locals['valkey'] = valkey;
-  app.locals['pool'] = pool;
-
-  // ── Routes ─────────────────────────────────────────────────────────────────
-  app.use('/api', routesRouter);
-  app.use('/api', stopsRouter);
-  app.use('/api', favoritesRouter);
-
-  // Health check (also used to verify poller liveness from monitoring)
-  app.get('/health', async (_req, res) => {
-    const pollerLastSuccess = await valkey.get('poller:last_success');
-    res.json({
-      status: 'ok',
-      pollerLastSuccess: pollerLastSuccess ?? null,
-      timestamp: new Date().toISOString(),
-    });
-  });
-
-  // 404 catch-all
-  app.use((_req, res) => {
-    res.status(404).json({ error: 'not_found' });
+  const app = createApp({
+    valkey,
+    pool,
+    corsOrigins: CORS_ORIGINS,
   });
 
   // ── Listen ─────────────────────────────────────────────────────────────────
   app.listen(PORT, HOST, () => {
     console.log(`[api] BasBuddy API listening on http://${HOST}:${PORT}`);
   });
+
 
   // ── Graceful shutdown ──────────────────────────────────────────────────────
   const shutdown = async () => {

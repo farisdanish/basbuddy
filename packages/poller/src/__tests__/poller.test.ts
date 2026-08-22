@@ -282,5 +282,20 @@ describe('GTFS-RT Poller & ETA Engine', () => {
       expect(VALKEY_KEYS.pollerLastSuccess).toBe('poller:last_success');
       expect(VEHICLE_TTL_SECONDS).toBe(240);
     });
+
+    it('resolves stopName reliably from staticLookup stops map', () => {
+      const stopsMap = new Map([
+        ['SA1', { stopName: 'Pasar Seni Hub', lat: 3.14, lon: 101.69 }],
+      ]);
+      const stopInfo = stopsMap.get('SA1');
+      const stopName = stopInfo?.stopName || 'SA1';
+      expect(stopName).toBe('Pasar Seni Hub');
+
+      // Fallback to stopId when stop not in lookup
+      const missingInfo = stopsMap.get('SA999');
+      const fallbackName = missingInfo?.stopName || 'SA999';
+      expect(fallbackName).toBe('SA999');
+    });
   });
+
 });

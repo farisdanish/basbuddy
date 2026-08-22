@@ -140,7 +140,8 @@ export async function runPollCycle(opts: CycleOptions): Promise<void> {
     // Sort ascending by ETA
     arrivals.sort((a, b) => a.etaSeconds - b.etaSeconds);
 
-    const stopName = staticLookup.stops.get(stopId)?.stopName ?? '';
+    const stopInfo = staticLookup.stops.get(stopId);
+    const stopName = stopInfo?.stopName || stopId;
 
     const etasResponse: StopEtasResponse = {
       stopId,

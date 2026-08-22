@@ -3,7 +3,7 @@ import type { Redis } from 'ioredis';
 import type { Pool } from 'pg';
 import {
   VALKEY_KEYS,
-  POLLER_STALENESS_THRESHOLD_SECONDS,
+  checkPollerLiveness,
   type RoutesResponse,
   type RouteVehiclesResponse,
   type LiveVehicle,
@@ -47,15 +47,14 @@ routesRouter.get('/routes/:routeId/vehicles', async (req, res) => {
   const { routeId } = req.params;
 
   try {
-    // Check poller liveness
+    // Check poller liveness (heartbeat staleness)
     const pollerLastSuccess = await valkey.get(VALKEY_KEYS.pollerLastSuccess);
-    const pollerAge = pollerLastSuccess
-      ? (Date.now() - new Date(pollerLastSuccess).getTime()) / 1000
-      : Infinity;
-    const pollerStale = pollerAge > POLLER_STALENESS_THRESHOLD_SECONDS;
+    const { healthy: pollerHealthy } = checkPollerLiveness(pollerLastSuccess);
+    const pollerStale = !pollerHealthy;
 
     // Get active trip IDs for this route
     const tripIds = await valkey.smembers(VALKEY_KEYS.routeVehicles(routeId));
+
 
     const vehicles: LiveVehicle[] = [];
 
