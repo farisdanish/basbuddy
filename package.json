@@ -12,6 +12,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run build --workspace=@basbuddy/shared && npm run typecheck --workspaces --if-present",
     "test": "vitest run",
+    "test:e2e": "npm run test:e2e --workspace=@basbuddy/frontend",
     "migrate": "npm run migrate --workspace=@basbuddy/ingestion",
     "ingest": "npm run ingest --workspace=@basbuddy/ingestion",
     "poller": "npm run dev --workspace=@basbuddy/poller",

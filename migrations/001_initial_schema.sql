@@ -4,7 +4,7 @@
 --
 -- All timestamps in application code MUST use Asia/Kuala_Lumpur (UTC+8).
 -- Set the session timezone explicitly in application code rather than relying
--- on server default — the Oracle VM may not have TZ=Asia/Kuala_Lumpur set.
+-- on server default — the production host may not have TZ=Asia/Kuala_Lumpur set.
 
 -- ── routes ────────────────────────────────────────────────────────────────────
 

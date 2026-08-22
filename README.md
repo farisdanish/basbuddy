@@ -131,8 +131,8 @@ BasBuddy is designed to run on any Linux host with minimal operational overhead:
 | M2 | Poller & Valkey cache — GTFS-RT 30s poller + vehicle-to-shape ETA engine | ✅ Complete |
 | M3 | CI/CD & Deployment — GitHub Actions automated deployment pipeline, systemd units, Caddy reverse proxy | ✅ Complete & Live |
 | M4 | REST API — Express endpoints (`/routes`, `/stops/:id/etas`, `/stops/near`, etc.) | ✅ Complete |
-| M5 | Frontend Shell — React 18 + Vite PWA + Leaflet map container + Golden Hour theme | 🟡 Next |
-| M6 | Frontend Live Tracking — Live bus markers, StopBottomSheet, favourites, signal-lost UI | 🔲 Planned |
+| M5 | Frontend Shell — React 18 + Vite PWA + Leaflet map container + Golden Hour theme | ✅ Complete |
+| M6 | Frontend Live Tracking — Live bus markers, StopBottomSheet, favourites, signal-lost UI | 🟡 Next |
 
 
 ---

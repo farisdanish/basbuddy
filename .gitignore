@@ -12,10 +12,12 @@ build/
 # --- TypeScript ---
 *.tsbuildinfo
 
-# --- Logs ---
+# --- Logs & Test Artifacts ---
 logs/
 *.log
 npm-debug.log*
+test-results/
+playwright-report/
 
 # --- OS ---
 .DS_Store

@@ -2,7 +2,7 @@ import { useFavorites } from '../../hooks/useFavorites.ts';
 
 // ─── FavoritesList ────────────────────────────────────────────────────────────
 // Horizontal scrollable strip of favourite stops, shown above the map bottom edge.
-// Tapping a favourite should open the StopSheet — wired in M7.
+// Tapping a favourite should open the StopSheet — wired in M6.
 
 interface FavoritesListProps {
   onSelectStop?: (stopId: string) => void;
