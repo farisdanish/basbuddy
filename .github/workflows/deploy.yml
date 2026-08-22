@@ -1,4 +1,4 @@
-name: Deploy to Production (OCI VM)
+name: Deploy to Production
 
 on:
   push:
@@ -8,7 +8,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH to OCI VM
+      - name: Deploy via SSH to Production Host
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.OCI_VM_HOST }}
@@ -30,9 +30,10 @@ jobs:
             echo "Using Node: $(which node || echo 'not found') ($(node -v 2>/dev/null || echo 'N/A'))"
             echo "Using NPM: $(which npm || echo 'not found') ($(npm -v 2>/dev/null || echo 'N/A'))"
 
-            echo "=== 1. Pulling latest code ==="
+            echo "=== 1. Syncing latest code ==="
             cd /home/basbuddy/basbuddy
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             echo "=== 2. Installing dependencies & building ==="
             npm ci
