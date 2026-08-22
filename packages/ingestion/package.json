@@ -5,7 +5,8 @@
   "description": "M1 — GTFS Static ingestion script: download, parse, upsert into Postgres",
   "scripts": {
     "ingest": "tsx src/ingest.ts",
-    "migrate": "node-pg-migrate -d \"$DATABASE_URL\" -m ../../migrations up",
+    "migrate": "tsx src/migrate.ts up",
+    "migrate:down": "tsx src/migrate.ts down",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "tsc --build"

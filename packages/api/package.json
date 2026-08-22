@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "tsx --watch src/server.ts",
     "start": "node dist/server.js",
-    "migrate": "node-pg-migrate -d \"$DATABASE_URL\" -m ../../migrations up",
-    "migrate:down": "node-pg-migrate -d \"$DATABASE_URL\" -m ../../migrations down",
+    "migrate": "npm run migrate --workspace=@basbuddy/ingestion",
+    "migrate:down": "npm run migrate:down --workspace=@basbuddy/ingestion",
     "typecheck": "tsc --noEmit",
     "build": "tsc --build"
   },
