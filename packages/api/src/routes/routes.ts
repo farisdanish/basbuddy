@@ -4,15 +4,46 @@ import type { Pool } from 'pg';
 import {
   VALKEY_KEYS,
   checkPollerLiveness,
+  parseGtfsTime,
   type RoutesResponse,
   type RouteDetailsResponse,
   type RouteStopItem,
   type RouteVehiclesResponse,
   type LiveVehicle,
   type VehiclePositionCache,
+  type RouteTimetable,
+  type RouteScheduledDeparture,
 } from '@basbuddy/shared';
 
 export const routesRouter = Router();
+
+type DayName = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+function nowInKL(): { dayOfWeek: DayName; secondsSinceMidnight: number } {
+  const now = new Date();
+  const klFormatter = new Intl.DateTimeFormat('en-MY', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    weekday: 'long',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: false,
+  });
+  const parts = klFormatter.formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '0';
+
+  const weekdayMap: Record<string, DayName> = {
+    Monday: 'monday', Tuesday: 'tuesday', Wednesday: 'wednesday',
+    Thursday: 'thursday', Friday: 'friday', Saturday: 'saturday', Sunday: 'sunday',
+  };
+  const dayOfWeek = weekdayMap[get('weekday')] ?? 'monday';
+  const h = parseInt(get('hour'), 10);
+  const m = parseInt(get('minute'), 10);
+  const s = parseInt(get('second'), 10);
+  const secondsSinceMidnight = h * 3600 + m * 60 + s;
+
+  return { dayOfWeek, secondsSinceMidnight };
+}
 
 // ── GET /api/routes ────────────────────────────────────────────────────────────
 // Returns all routes from Postgres (static data).
@@ -170,6 +201,68 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
       }
     }
 
+    // 6. Get static timetable departures for this route today
+    let timetable: RouteTimetable | null = null;
+    try {
+      const nowKL = nowInKL();
+      const dayOfWeek = nowKL.dayOfWeek;
+      const secondsSinceMidnight = nowKL.secondsSinceMidnight;
+
+      const departuresRes = await pool.query<{
+        trip_id: string;
+        direction_id: number;
+        trip_headsign: string;
+        departure_time: string;
+      }>(
+        `SELECT DISTINCT ON (t.trip_id) t.trip_id, t.direction_id, t.trip_headsign, st.departure_time
+         FROM trips t
+         JOIN calendar c ON c.service_id = t.service_id
+         JOIN stop_times st ON st.trip_id = t.trip_id
+         WHERE t.route_id = $1
+           AND c.${dayOfWeek} = 1
+           AND c.start_date <= CURRENT_DATE
+           AND c.end_date >= CURRENT_DATE
+         ORDER BY t.trip_id, st.stop_sequence ASC`,
+        [routeId],
+      );
+
+      if (departuresRes.rows.length > 0) {
+        // Sort departures chronologically by departure_time
+        const allDepartures: RouteScheduledDeparture[] = departuresRes.rows
+          .map((row) => ({
+            tripId: row.trip_id,
+            departureTime: row.departure_time,
+            tripHeadsign: row.trip_headsign,
+            directionId: row.direction_id,
+          }))
+          .sort((a, b) => {
+            try {
+              return parseGtfsTime(a.departureTime) - parseGtfsTime(b.departureTime);
+            } catch {
+              return a.departureTime.localeCompare(b.departureTime);
+            }
+          });
+
+        const nextDepartures = allDepartures.filter((d) => {
+          try {
+            return parseGtfsTime(d.departureTime) >= secondsSinceMidnight;
+          } catch {
+            return true;
+          }
+        });
+
+        timetable = {
+          firstBusTime: allDepartures[0]?.departureTime ?? null,
+          lastBusTime: allDepartures[allDepartures.length - 1]?.departureTime ?? null,
+          totalTripsToday: allDepartures.length,
+          nextDepartures,
+          allDepartures,
+        };
+      }
+    } catch (timetableErr) {
+      console.warn(`[api/routes] Timetable calculation warning for routeId=${routeId}:`, timetableErr);
+    }
+
     const response: RouteDetailsResponse = {
       routeId: route.route_id,
       routeShortName: route.route_short_name,
@@ -179,6 +272,7 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
       shapes,
       stops,
       vehicles,
+      timetable,
     };
 
     res.json(response);

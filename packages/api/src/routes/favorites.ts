@@ -13,7 +13,7 @@ favoritesRouter.get('/favorites', async (req, res) => {
   const pool = req.app.locals['pool'] as Pool;
   try {
     const result = await pool.query<{
-      id: number; stop_id: string; route_id: string | null;
+      id: number; stop_id: string | null; route_id: string | null;
       label: string | null; created_at: string;
     }>('SELECT id, stop_id, route_id, label, created_at FROM favorites ORDER BY created_at DESC');
 
@@ -38,20 +38,20 @@ favoritesRouter.post('/favorites', async (req, res) => {
   const pool = req.app.locals['pool'] as Pool;
   const body = req.body as CreateFavoriteBody;
 
-  if (!body?.stopId) {
-    res.status(400).json({ error: 'missing_stop_id' });
+  if (!body?.stopId && !body?.routeId) {
+    res.status(400).json({ error: 'missing_target', message: 'Either stopId or routeId must be provided' });
     return;
   }
 
   try {
     const result = await pool.query<{
-      id: number; stop_id: string; route_id: string | null;
+      id: number; stop_id: string | null; route_id: string | null;
       label: string | null; created_at: string;
     }>(
       `INSERT INTO favorites (stop_id, route_id, label)
        VALUES ($1, $2, $3)
        RETURNING id, stop_id, route_id, label, created_at`,
-      [body.stopId, body.routeId ?? null, body.label ?? null],
+      [body.stopId ?? null, body.routeId ?? null, body.label ?? null],
     );
 
     const row = result.rows[0]!;

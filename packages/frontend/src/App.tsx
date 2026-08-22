@@ -169,7 +169,9 @@ export default function App() {
       <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-auto">
         <FavoritesList
           selectedStopId={selectedStopId}
+          selectedRouteId={selectedRouteId}
           onSelectStop={handleSelectStop}
+          onSelectRoute={handleSelectRoute}
         />
       </div>
 

@@ -115,6 +115,21 @@ export interface RouteDirection {
   tripHeadsign: string;
 }
 
+export interface RouteScheduledDeparture {
+  tripId: string;
+  departureTime: string; // e.g. "07:10:00"
+  tripHeadsign: string;
+  directionId: number;
+}
+
+export interface RouteTimetable {
+  firstBusTime: string | null;
+  lastBusTime: string | null;
+  totalTripsToday: number;
+  nextDepartures: RouteScheduledDeparture[];
+  allDepartures: RouteScheduledDeparture[];
+}
+
 export interface RouteDetailsResponse {
   routeId: string;
   routeShortName: string;
@@ -124,6 +139,7 @@ export interface RouteDetailsResponse {
   shapes: Array<[lat: number, lon: number]>;
   stops: RouteStopItem[];
   vehicles: LiveVehicle[];
+  timetable?: RouteTimetable | null;
 }
 
 // ── GET /api/routes/:routeId/vehicles ─────────────────────────────────────────
@@ -148,9 +164,9 @@ export interface RouteVehiclesResponse {
 
 export interface Favorite {
   id: number;
-  stopId: string;
+  stopId: string | null;
   routeId: string | null;
-  /** User-defined label, e.g. "Home stop" */
+  /** User-defined label, e.g. "Home stop" or "Route T728" */
   label: string | null;
   createdAt: string; // ISO 8601
 }
@@ -160,7 +176,7 @@ export interface FavoritesResponse {
 }
 
 export interface CreateFavoriteBody {
-  stopId: string;
+  stopId?: string;
   routeId?: string;
   label?: string;
 }

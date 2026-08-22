@@ -272,6 +272,47 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.routes[0].routeId).toBe('753');
       expect(res.body.routes[1].routeId).toBe('754');
     });
+
+    it('GET /api/routes/:routeId returns RouteDetailsResponse with timetable', async () => {
+      // 1. route basic info
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ route_id: '753', route_short_name: '753', route_long_name: 'Shah Alam', route_color: 'FF0000' }],
+        rowCount: 1,
+      });
+      // 2. directions
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ direction_id: 0, trip_headsign: 'Terminal', shape_id: 'sh_1', trip_id: 'trip_1' }],
+        rowCount: 1,
+      });
+      // 3. shapes
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ shape_pt_lat: 3.14, shape_pt_lon: 101.69 }],
+        rowCount: 1,
+      });
+      // 4. stops
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ stop_id: 'SA1', stop_name: 'Stop 1', stop_lat: 3.14, stop_lon: 101.69, stop_sequence: 1 }],
+        rowCount: 1,
+      });
+      // 5. timetable departures query
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          { trip_id: 'trip_1', direction_id: 0, trip_headsign: 'Terminal', departure_time: '06:30:00' },
+          { trip_id: 'trip_2', direction_id: 0, trip_headsign: 'Terminal', departure_time: '23:00:00' },
+        ],
+        rowCount: 2,
+      });
+
+      const res = await request(app).get('/api/routes/753');
+      expect(res.status).toBe(200);
+      expect(res.body.routeId).toBe('753');
+      expect(res.body.routeShortName).toBe('753');
+      expect(res.body.timetable).not.toBeNull();
+      expect(res.body.timetable.firstBusTime).toBe('06:30:00');
+      expect(res.body.timetable.lastBusTime).toBe('23:00:00');
+      expect(res.body.timetable.totalTripsToday).toBe(2);
+      expect(res.body.timetable.allDepartures).toHaveLength(2);
+    });
   });
 
   // ── 5. GET /api/routes/:routeId/vehicles ───────────────────────────────────
@@ -380,17 +421,17 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.favorites[0].label).toBe('Home');
     });
 
-    it('POST /api/favorites creates favorite and returns 201', async () => {
+    it('POST /api/favorites creates stop favorite and returns 201', async () => {
       mockPool.query.mockResolvedValueOnce({
         rows: [
-          { id: 42, stop_id: 'SA1', route_id: '753', label: 'Work', created_at: '2026-08-22T10:00:00Z' },
+          { id: 42, stop_id: 'SA1', route_id: null, label: 'Work', created_at: '2026-08-22T10:00:00Z' },
         ],
         rowCount: 1,
       });
 
       const res = await request(app)
         .post('/api/favorites')
-        .send({ stopId: 'SA1', routeId: '753', label: 'Work' });
+        .send({ stopId: 'SA1', label: 'Work' });
 
       expect(res.status).toBe(201);
       expect(res.body.id).toBe(42);
@@ -398,13 +439,32 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.label).toBe('Work');
     });
 
-    it('POST /api/favorites returns 400 on missing stopId', async () => {
+    it('POST /api/favorites creates route-only favorite and returns 201', async () => {
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          { id: 43, stop_id: null, route_id: 'T7280', label: 'Route T728', created_at: '2026-08-22T10:00:00Z' },
+        ],
+        rowCount: 1,
+      });
+
       const res = await request(app)
         .post('/api/favorites')
-        .send({ label: 'No Stop' });
+        .send({ routeId: 'T7280', label: 'Route T728' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.id).toBe(43);
+      expect(res.body.routeId).toBe('T7280');
+      expect(res.body.stopId).toBeNull();
+      expect(res.body.label).toBe('Route T728');
+    });
+
+    it('POST /api/favorites returns 400 when both stopId and routeId are missing', async () => {
+      const res = await request(app)
+        .post('/api/favorites')
+        .send({ label: 'No Stop Or Route' });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toBe('missing_stop_id');
+      expect(res.body.error).toBe('missing_target');
     });
 
     it('POST /api/favorites returns 400 on foreign key violation (stop or route not found)', async () => {

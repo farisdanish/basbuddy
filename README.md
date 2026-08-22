@@ -31,6 +31,26 @@ BasBuddy is an independent, mobile-first transit tracker designed to solve the d
 
 ---
 
+## 📡 Real-Time Data Coverage & Open API Limitations
+
+BasBuddy strictly mirrors the official open data stream from [`data.gov.my`](https://data.gov.my) without fabricating or guessing bus locations. Commuters and developers should note the following characteristics of the upstream data pipeline:
+
+1. **Open Data vs. Proprietary CAD/AVL Systems**:
+   - Prasarana's internal kiosk portal (`myrapidbus.prasarana.com.my`) queries live on-bus transponder hardware directly.
+   - `data.gov.my` publishes an open **GTFS Realtime (GTFS-RT)** protobuf stream exported upstream by Prasarana.
+2. **Partial Fleet Telemetry in Public Feeds**:
+   - At any given time, only buses actively bound to official static GTFS schedule blocks are exported to the public feed.
+   - Feeder routes (e.g. MRT/LRT feeder buses), ad-hoc depot dispatches, or buses with unlinked trip blocks may operate on the road and appear on internal hardware portals while being omitted from the public open feed.
+3. **Rate Limits & Polling Intervals**:
+   - Upstream API rate limits on `data.gov.my` (~4 requests/minute) dictate a single-instance **30-second polling cycle**.
+   - GPS telemetry latency is typically 30–60 seconds behind real-world vehicle position.
+4. **Transparent Fallbacks & Freshness Badging**:
+   - **🟢 Live**: Verified real-time GPS telemetry updated within the last 120 seconds.
+   - **🟡 Stale**: Telemetry between 120s and 240s old (e.g., GPS tunnel or bridge dropout).
+   - **🔴 Signal Lost / Schedule**: If GPS telemetry is unavailable, BasBuddy automatically displays published static timetable departure schedules and explicitly flags the arrival as non-realtime.
+
+---
+
 ## System Architecture
 
 ```
