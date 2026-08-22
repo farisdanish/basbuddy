@@ -10,7 +10,7 @@
     "build": "npm run build --workspace=@basbuddy/shared && npm run build --workspaces --if-present",
     "dev": "npm run dev --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run build --workspace=@basbuddy/shared && npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "migrate": "npm run migrate --workspace=@basbuddy/ingestion",
     "ingest": "npm run ingest --workspace=@basbuddy/ingestion",

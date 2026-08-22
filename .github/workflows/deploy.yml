@@ -18,6 +18,18 @@ jobs:
           script: |
             set -e
 
+            # 0. Ensure standard PATH and load NVM if present
+            export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            if [ -d "$HOME/.nvm/versions/node" ]; then
+              NODE_NVM_BIN="$(find "$HOME/.nvm/versions/node" -maxdepth 2 -name bin 2>/dev/null | tail -n 1)"
+              [ -n "$NODE_NVM_BIN" ] && export PATH="$NODE_NVM_BIN:$PATH"
+            fi
+
+            echo "Using Node: $(which node || echo 'not found') ($(node -v 2>/dev/null || echo 'N/A'))"
+            echo "Using NPM: $(which npm || echo 'not found') ($(npm -v 2>/dev/null || echo 'N/A'))"
+
             echo "=== 1. Pulling latest code ==="
             cd /home/basbuddy/basbuddy
             git pull origin main
