@@ -1,16 +1,14 @@
 import { useEffect } from 'react';
-import { useMap, Polyline, CircleMarker, Tooltip } from 'react-leaflet';
+import { useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import type { RouteDetailsResponse } from '@basbuddy/shared';
 
 interface RoutePolylineLayerProps {
   routeData: RouteDetailsResponse | null;
-  onSelectStop: (stopId: string) => void;
 }
 
 export function RoutePolylineLayer({
   routeData,
-  onSelectStop,
 }: RoutePolylineLayerProps) {
   const map = useMap();
 
@@ -63,30 +61,6 @@ export function RoutePolylineLayer({
           lineJoin: 'round',
         }}
       />
-
-      {/* Stop markers along the route */}
-      {(routeData.stops ?? []).map((stop) => (
-        <CircleMarker
-          key={stop.stopId}
-          center={[stop.lat, stop.lon]}
-          radius={5}
-          pathOptions={{
-            color: '#101B2D',
-            fillColor: '#FFF8EE',
-            fillOpacity: 1,
-            weight: 2,
-          }}
-          eventHandlers={{
-            click: () => onSelectStop(stop.stopId),
-          }}
-        >
-          <Tooltip direction="top" offset={[0, -6]} opacity={0.95}>
-            <span className="font-sans font-semibold text-xs text-[#101B2D]">
-              {stop.stopName}
-            </span>
-          </Tooltip>
-        </CircleMarker>
-      ))}
     </>
   );
 }

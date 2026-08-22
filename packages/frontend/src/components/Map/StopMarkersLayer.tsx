@@ -1,10 +1,15 @@
 import { useMemo } from 'react';
 import { Marker, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
-import type { NearbyStop } from '@basbuddy/shared';
+export interface StopMarkerItem {
+  stopId: string;
+  stopName: string;
+  lat: number;
+  lon: number;
+}
 
 interface StopMarkersLayerProps {
-  stops: NearbyStop[];
+  stops: StopMarkerItem[];
   selectedStopId: string | null;
   onSelectStop: (stopId: string) => void;
 }

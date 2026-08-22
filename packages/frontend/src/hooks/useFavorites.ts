@@ -39,10 +39,16 @@ async function fetchFavoritesFromApi() {
 }
 
 export function useFavorites(): UseFavoritesResult {
-  const [, setTick] = useState(0);
+  const [favorites, setFavorites] = useState<Favorite[]>(sharedFavorites);
+  const [loading, setLoading] = useState(sharedLoading);
+  const [error, setError] = useState<string | null>(sharedError);
 
   useEffect(() => {
-    const listener = () => setTick((t) => t + 1);
+    const listener = () => {
+      setFavorites([...sharedFavorites]);
+      setLoading(sharedLoading);
+      setError(sharedError);
+    };
     listeners.add(listener);
 
     void fetchFavoritesFromApi();
@@ -54,7 +60,7 @@ export function useFavorites(): UseFavoritesResult {
 
   const addFavorite = useCallback(async (body: CreateFavoriteBody) => {
     const created = await apiPost<Favorite>('/api/favorites', body);
-    sharedFavorites = [created, ...sharedFavorites.filter((f) => f.id !== created.id)];
+    sharedFavorites = [created, ...sharedFavorites.filter((f) => f.id !== created.id && f.stopId !== created.stopId)];
     emitChange();
   }, []);
 
@@ -65,9 +71,9 @@ export function useFavorites(): UseFavoritesResult {
   }, []);
 
   return {
-    favorites: sharedFavorites,
-    loading: sharedLoading,
-    error: sharedError,
+    favorites,
+    loading,
+    error,
     addFavorite,
     removeFavorite,
     refetch: fetchFavoritesFromApi,

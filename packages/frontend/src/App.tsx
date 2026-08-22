@@ -100,6 +100,11 @@ export default function App() {
     setSelectedRouteId(routeId);
   }, []);
 
+  // When a specific route is selected, show ONLY stops for that route; otherwise show nearby stops
+  const activeStops = selectedRouteId
+    ? (routeData?.stops ?? [])
+    : stops;
+
   return (
     <div className={`relative h-full w-full overflow-hidden ${gradientClass}`}>
       {/* ── Full-Screen Map Canvas ─────────────────────────────────────────── */}
@@ -119,10 +124,9 @@ export default function App() {
         <UserLocationMarker position={position} />
         <RoutePolylineLayer
           routeData={routeData}
-          onSelectStop={handleSelectStop}
         />
         <StopMarkersLayer
-          stops={stops}
+          stops={activeStops}
           selectedStopId={selectedStopId}
           onSelectStop={handleSelectStop}
         />
