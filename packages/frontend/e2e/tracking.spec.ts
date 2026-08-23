@@ -348,6 +348,60 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     await expect(routeInspector).not.toBeVisible();
   });
 
+  test('mobile viewport renders RouteTrackerSheet with horizontal stops strip and responsive timetable modal', async ({ page }) => {
+    // Set mobile viewport (iPhone 14 / modern smartphone dimensions)
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+
+    // Search and select route 750
+    const searchTrigger = page.getByRole('button', { name: 'Search stops, routes, hubs' });
+    await searchTrigger.click({ force: true });
+
+    const searchInput = page.getByPlaceholder('Search stops, routes...');
+    await searchInput.fill('750');
+
+    const routeButton = page.getByRole('button', { name: /750.*Pasar Seni/i });
+    await expect(routeButton).toBeVisible({ timeout: 5000 });
+    await routeButton.click();
+
+    // Verify RouteTrackerSheet renders on mobile
+    const routeInspector = page.getByRole('complementary', { name: 'Route inspector' });
+    await expect(routeInspector).toBeVisible({ timeout: 5000 });
+    await expect(routeInspector).toContainText('750');
+    await expect(routeInspector).toContainText('Pasar Seni - Seksyen 2 Shah Alam');
+
+    // Verify stop items render
+    const stopPill = routeInspector.getByRole('button', { name: /Pasar Seni Platform B/i });
+    await expect(stopPill).toBeVisible();
+
+    // Open timetable on mobile
+    const timetableBtn = routeInspector.getByRole('button', { name: 'Timetable' });
+    await timetableBtn.click();
+
+    // Verify timetable modal is visible with scheduled departures
+    const timetableDialog = page.getByRole('dialog');
+    await expect(timetableDialog).toBeVisible({ timeout: 5000 });
+    await expect(timetableDialog).toContainText('Scheduled Timetable');
+
+    // Close timetable via close button
+    const closeTimetableBtn = timetableDialog.getByRole('button', { name: 'Close timetable' });
+    await closeTimetableBtn.click();
+    await expect(timetableDialog).not.toBeVisible();
+
+    // Tap stop pill to open StopSheet drawer
+    await stopPill.click();
+    const stopHeading = page.getByRole('heading', { name: 'Pasar Seni Platform B' });
+    await expect(stopHeading).toBeVisible({ timeout: 5000 });
+
+    // Dismiss StopSheet
+    await page.keyboard.press('Escape');
+
+    // Close route inspector
+    const closeBtn = page.getByRole('button', { name: 'Close route inspector' });
+    await closeBtn.click({ force: true });
+    await expect(routeInspector).not.toBeVisible();
+  });
+
   test('degraded feed warning banner appears when poller heartbeat exceeds staleness threshold', async ({ page }) => {
     // Override health check with stale timestamp (3 minutes ago)
     const staleTime = new Date(Date.now() - 180_000).toISOString();
