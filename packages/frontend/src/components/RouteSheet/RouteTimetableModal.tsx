@@ -43,6 +43,45 @@ function secondsToTimeString(totalSec: number): string {
   return `${hh}:${mm} ${ampm}${nextDay ? ' (+1)' : ''}`;
 }
 
+function getKLSecondsSinceMidnight(): number {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(now);
+  const h = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10);
+  const m = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10);
+  const s = parseInt(parts.find((p) => p.type === 'second')?.value ?? '0', 10);
+  return h * 3600 + m * 60 + s;
+}
+
+function findClosestDepartureTripId(departures: Array<{ tripId: string; departureTime: string }>): string {
+  if (departures.length === 0) return '';
+  const nowSec = getKLSecondsSinceMidnight();
+
+  // First check if there is an upcoming departure today (departure time >= current time - 2 mins grace)
+  const upcoming = departures.filter((d) => parseTimeToSeconds(d.departureTime) >= nowSec - 120);
+  if (upcoming.length > 0) {
+    return upcoming[0]!.tripId;
+  }
+
+  // If all departures today have passed (e.g. late night), find closest trip by absolute time difference
+  let closest = departures[0]!;
+  let minDiff = Infinity;
+  for (const d of departures) {
+    const diff = Math.abs(parseTimeToSeconds(d.departureTime) - nowSec);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = d;
+    }
+  }
+  return closest.tripId;
+}
+
 export function RouteTimetableModal({
   isOpen,
   onClose,
@@ -87,19 +126,17 @@ export function RouteTimetableModal({
     );
   }, [allDepartures, directions.length, activeDirectionId]);
 
-  const nextDepartureTripId = timetable?.nextDepartures?.[0]?.tripId;
+  const nextDepartureTripId = useMemo(() => {
+    return findClosestDepartureTripId(dirDepartures);
+  }, [dirDepartures]);
 
-  // Sync selected trip when departures or direction changes
+  // Default to the trip closest to current time
   useEffect(() => {
     if (dirDepartures.length > 0) {
-      const hasNext = dirDepartures.find((d) => d.tripId === nextDepartureTripId);
-      if (hasNext) {
-        setSelectedTripId(hasNext.tripId);
-      } else if (!selectedTripId || !dirDepartures.some((d) => d.tripId === selectedTripId)) {
-        setSelectedTripId(dirDepartures[0]!.tripId);
-      }
+      const closestTripId = findClosestDepartureTripId(dirDepartures);
+      setSelectedTripId(closestTripId);
     }
-  }, [dirDepartures, nextDepartureTripId, activeDirectionIndex]);
+  }, [dirDepartures, activeDirectionIndex]);
 
   const activeTrip = dirDepartures.find((d) => d.tripId === selectedTripId) || dirDepartures[0];
   const originDepartureTime = activeTrip?.departureTime || timetable?.firstBusTime || '06:00:00';
@@ -219,9 +256,12 @@ export function RouteTimetableModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="timetable-pane-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200 md:bg-transparent md:backdrop-blur-none md:p-0 md:pointer-events-none md:inset-auto md:top-20 md:right-6 md:w-[440px] md:max-h-[calc(100vh-10rem)] md:block"
     >
-      <div className="relative w-full max-w-xl max-h-[92vh] flex flex-col rounded-3xl bg-[#182337] border border-white/10 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg max-h-[85vh] md:max-h-[calc(100vh-10rem)] md:w-[440px] flex flex-col rounded-3xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden text-[#FFF8EE] md:pointer-events-auto transition-all animate-in md:slide-in-from-right-4 duration-200">
         {/* Header section */}
         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#101B2D]/90 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
