@@ -215,6 +215,19 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
               freshness: 'live',
             },
           ],
+          timetable: {
+            firstBusTime: '06:00:00',
+            lastBusTime: '23:30:00',
+            nextDepartures: [
+              { tripId: `TRIP-${routeId}-1`, departureTime: '07:15:00', tripHeadsign: 'Seksyen 2 Shah Alam', directionId: 0 },
+            ],
+            allDepartures: [
+              { tripId: `TRIP-${routeId}-1`, departureTime: '07:15:00', tripHeadsign: 'Seksyen 2 Shah Alam', directionId: 0 },
+              { tripId: `TRIP-${routeId}-2`, departureTime: '08:30:00', tripHeadsign: 'Seksyen 2 Shah Alam', directionId: 0 },
+              { tripId: `TRIP-${routeId}-3`, departureTime: '13:00:00', tripHeadsign: 'Seksyen 2 Shah Alam', directionId: 0 },
+              { tripId: `TRIP-${routeId}-4`, departureTime: '19:45:00', tripHeadsign: 'Seksyen 2 Shah Alam', directionId: 0 },
+            ],
+          },
         }),
       });
     });
