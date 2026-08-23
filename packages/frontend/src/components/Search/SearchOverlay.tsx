@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, X, Search, MapPin } from 'lucide-react';
 import { useSearch, type SearchCategory } from '../../hooks/useSearch.ts';
+import { getServiceBadge } from '../../utils/serviceBadges.ts';
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -143,30 +144,40 @@ export function SearchOverlay({
               Routes ({routes.length})
             </h3>
             <div className="space-y-1.5">
-              {routes.map((route) => (
-                <button
-                  key={route.routeId}
-                  data-testid={`search-route-${route.routeId}`}
-                  type="button"
-                  onClick={() => {
-                    onSelectRoute(route.routeId);
-                    onClose();
-                  }}
-                  className="w-full flex items-center gap-3.5 p-3 rounded-xl bg-[#182337]/60 hover:bg-[#182337] active:scale-[0.99] border border-white/5 text-left transition-all group"
-                >
-                  <div className="flex items-center justify-center px-2.5 h-8 rounded-lg bg-[#F4A100] text-[#101B2D] font-display font-bold text-sm shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                    {route.routeShortName}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-sans font-medium text-[#FFF8EE] truncate">
-                      {route.routeLongName}
+              {routes.map((route) => {
+                const badge = getServiceBadge(route.routeShortName);
+                return (
+                  <button
+                    key={route.routeId}
+                    data-testid={`search-route-${route.routeId}`}
+                    type="button"
+                    onClick={() => {
+                      onSelectRoute(route.routeId);
+                      onClose();
+                    }}
+                    className="w-full flex items-center gap-3.5 p-3 rounded-xl bg-[#182337]/60 hover:bg-[#182337] active:scale-[0.99] border border-white/5 text-left transition-all group"
+                  >
+                    <div className="flex items-center justify-center px-2.5 h-8 rounded-lg bg-[#F4A100] text-[#101B2D] font-display font-bold text-sm shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                      {route.routeShortName}
                     </div>
-                    <div className="text-xs font-mono text-[#FFF8EE]/40">
-                      Route ID: {route.routeId}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-sans font-medium text-[#FFF8EE] truncate">
+                          {route.routeLongName}
+                        </div>
+                        <span
+                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${badge.badgeClass}`}
+                        >
+                          {badge.label}
+                        </span>
+                      </div>
+                      <div className="text-xs font-mono text-[#FFF8EE]/40 mt-0.5">
+                        Route ID: {route.routeId}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

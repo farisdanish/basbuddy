@@ -1,7 +1,7 @@
 # BasBuddy
 
-> **High-performance RapidKL bus tracking & live arrival estimates for Klang Valley commuters.**  
-> Powered by open transit data from `data.gov.my` and Prasarana.
+> **High-performance transit tracking & live arrival estimates for Malaysian commuters.**  
+> Powered by open transit data from `data.gov.my`, Prasarana, and Malaysian transport authorities.
 
 [![Data: CC BY 4.0](https://img.shields.io/badge/Data-CC%20BY%204.0-blue)](https://creativecommons.org/licenses/by/4.0/)
 [![Data source: data.gov.my](https://img.shields.io/badge/Source-data.gov.my-green)](https://api.data.gov.my)
@@ -11,7 +11,7 @@
 
 ## Overview & Mission
 
-BasBuddy is an independent, mobile-first transit tracker designed to solve the daily uncertainty of bus commuting across Greater Kuala Lumpur and the Klang Valley. By bridging real-time GTFS Realtime vehicle positions with static GTFS schedules, BasBuddy provides fast, accurate arrival countdowns, live vehicle maps, and transparent data freshness indicators.
+BasBuddy is an independent, mobile-first transit tracker designed to solve daily commuting uncertainty across Malaysia. By bridging real-time GTFS Realtime vehicle positions with static GTFS schedules, BasBuddy provides fast, accurate arrival countdowns, live vehicle maps, service badges (including Smart Selangor, PJ City, Nadi Putra, and MRT Feeders), and transparent data freshness indicators.
 
 ### Key Capabilities
 

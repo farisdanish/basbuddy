@@ -1,15 +1,15 @@
 import { transit_realtime } from 'gtfs-realtime-bindings';
 import type { VehiclePositionCache } from '@basbuddy/shared';
 
-// ─── Bounding box for RapidKL coverage area ───────────────────────────────────
+// ─── Bounding box for transit coverage area ──────────────────────────────────
 // Positions outside this box are treated as bad GPS readings and dropped (§9).
 // Configurable via env vars so you can tighten/widen without a code change.
 
 const BOUNDS = {
-  latMin: parseFloat(process.env.BOUNDS_LAT_MIN ?? '2.5'),
-  latMax: parseFloat(process.env.BOUNDS_LAT_MAX ?? '3.5'),
-  lonMin: parseFloat(process.env.BOUNDS_LON_MIN ?? '101.2'),
-  lonMax: parseFloat(process.env.BOUNDS_LON_MAX ?? '102.0'),
+  latMin: parseFloat(process.env.BOUNDS_LAT_MIN ?? '0.5'),
+  latMax: parseFloat(process.env.BOUNDS_LAT_MAX ?? '8.0'),
+  lonMin: parseFloat(process.env.BOUNDS_LON_MIN ?? '98.0'),
+  lonMax: parseFloat(process.env.BOUNDS_LON_MAX ?? '121.0'),
 };
 
 /**
@@ -29,7 +29,7 @@ export interface RawVehicleEntity {
  * Decodes a GTFS-RT protobuf buffer into an array of vehicle position entities.
  * Drops entities that:
  *  - have no position (lat/lon both 0 is treated as "no position")
- *  - fall outside the RapidKL coverage bounding box (bad GPS guard, §9)
+ *  - fall outside the coverage bounding box (bad GPS guard, §9)
  */
 export function decodeRealtimeFeed(buffer: Buffer): RawVehicleEntity[] {
   const feed = transit_realtime.FeedMessage.decode(buffer);

@@ -3,6 +3,7 @@ import { X, Navigation, Radio, Star, Calendar, Clock, AlertCircle, ChevronUp, Ch
 import type { RouteDetailsResponse } from '@basbuddy/shared';
 import { useFavorites } from '../../hooks/useFavorites.ts';
 import { RouteTimetableModal } from './RouteTimetableModal.tsx';
+import { getServiceBadge } from '../../utils/serviceBadges.ts';
 
 interface RouteTrackerSheetProps {
   routeData: RouteDetailsResponse | null;
@@ -27,6 +28,7 @@ export function RouteTrackerSheet({
   const vehiclesCount = routeData?.vehicles?.length ?? 0;
   const directions = routeData?.directions ?? [];
   const timetable = routeData?.timetable;
+  const serviceBadge = getServiceBadge(routeData?.routeShortName);
 
   const existingRouteFav = routeData?.routeId
     ? favorites.find((f) => f.routeId === routeData.routeId && !f.stopId)
@@ -124,9 +126,18 @@ export function RouteTrackerSheet({
             </div>
 
             <div className="min-w-0">
-              <h2 className="text-sm font-sans font-bold text-[#FFF8EE] truncate">
-                {routeData?.routeLongName || 'Loading route...'}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-sans font-bold text-[#FFF8EE] truncate">
+                  {routeData?.routeLongName || 'Loading route...'}
+                </h2>
+                {routeData && (
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.2 rounded border shrink-0 ${serviceBadge.badgeClass}`}
+                  >
+                    {serviceBadge.label}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-0.5 text-xs font-mono text-[#FFF8EE]/60">
                 <span className={`flex items-center gap-1 ${vehiclesCount > 0 ? 'text-[#E94B8C]' : 'text-amber-400/80'}`}>
                   <Radio className={`w-3 h-3 ${vehiclesCount > 0 ? 'animate-pulse' : ''}`} />

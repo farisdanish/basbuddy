@@ -53,7 +53,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                 BasBuddy Info & Support
               </h2>
               <p className="text-xs font-mono text-[#FFF8EE]/50">
-                Klang Valley RapidKL Transit Companion
+                Malaysia Transit Companion
               </p>
             </div>
           </div>
@@ -121,7 +121,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                   <span>Independent & Open Source</span>
                 </div>
                 <p>
-                  <strong>BasBuddy</strong> is an unofficial, high-performance RapidKL bus tracking service and PWA designed to give commuters in the Klang Valley transparent, instant access to bus schedules, arrival countdowns, and live GPS positions.
+                  <strong>BasBuddy</strong> is an unofficial, high-performance transit tracking service and PWA designed to give commuters transparent, instant access to bus schedules, arrival countdowns, and live GPS positions across Malaysia.
                 </p>
               </div>
 
@@ -132,7 +132,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                   <li className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-2">
                     <Radio className="w-3.5 h-3.5 text-[#E94B8C] shrink-0 mt-0.5" />
-                    <span><strong>Live GPS Map:</strong> Real-time bus tracking with directional bearing on road shapes.</span>
+                    <span><strong>Live GPS Map:</strong> Real-time vehicle tracking with directional bearing on route shapes.</span>
                   </li>
                   <li className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-2">
                     <Clock className="w-3.5 h-3.5 text-[#F4A100] shrink-0 mt-0.5" />
@@ -144,7 +144,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                   </li>
                   <li className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-2">
                     <Heart className="w-3.5 h-3.5 text-[#FF5A47] shrink-0 mt-0.5" />
-                    <span><strong>Favorites Tray:</strong> One-tap access to your frequent bus stops and routes.</span>
+                    <span><strong>Favorites Tray:</strong> One-tap access to your frequent stops and routes.</span>
                   </li>
                 </ul>
               </div>
@@ -155,10 +155,10 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                   <span className="text-[10px] font-mono text-[#F4A100]">CC BY 4.0</span>
                 </div>
                 <p>
-                  Transit schedules, route geometries, and realtime protobuf feeds are powered by open data published by <strong>Prasarana Malaysia Berhad</strong> on <a className="text-[#F4A100] underline" href="https://data.gov.my" target="_blank" rel="noopener noreferrer">data.gov.my</a>.
+                  Transit schedules, route geometries, and realtime protobuf feeds are powered by open data published by <strong>Prasarana Malaysia Berhad</strong> and Malaysian transport agencies on <a className="text-[#F4A100] underline" href="https://data.gov.my" target="_blank" rel="noopener noreferrer">data.gov.my</a>.
                 </p>
                 <p className="text-[10px] text-[#FFF8EE]/40">
-                  BasBuddy is not affiliated with, endorsed by, or connected to Prasarana or RapidKL.
+                  BasBuddy is not affiliated with, endorsed by, or connected to Prasarana, Rapid Bus, or any government agency.
                 </p>
               </div>
             </div>
@@ -173,7 +173,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                   Why does it say &quot;No live GPS&quot; or &quot;0 buses live&quot;?
                 </h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
-                  The open data feed only shares GPS for buses actively moving on the road. If a bus is waiting at the depot or between trips, we show the <strong>official timetable</strong> so you still know when the next bus is scheduled.
+                  The open data feed only shares GPS for vehicles actively moving on the road. If a bus is waiting at the depot or between trips, we show the <strong>official timetable</strong> so you still know when the next trip is scheduled.
                 </p>
               </div>
 
@@ -183,7 +183,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                   Can I see bus plate numbers (e.g. WXX 1234)?
                 </h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
-                  Not right now. RapidKL&apos;s open data doesn&apos;t include license plate numbers. We track buses by their <strong>Route Number</strong> (e.g. <code>750</code>, <code>T728</code>) and <strong>Destination</strong>.
+                  Not right now. Open transit feeds don&apos;t include license plate numbers. We track vehicles by their <strong>Route Number</strong> (e.g. <code>750</code>, <code>SA02</code>, <code>T728</code>) and <strong>Destination</strong>.
                 </p>
               </div>
 
@@ -193,7 +193,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                   How do arrival times work?
                 </h4>
                 <div className="text-[11px] text-[#FFF8EE]/70 pl-6 space-y-1">
-                  <p>• <strong className="text-[#E94B8C]">Live (Pulsing pink dot):</strong> Real GPS location directly from the moving bus.</p>
+                  <p>• <strong className="text-[#E94B8C]">Live (Pulsing pink dot):</strong> Real GPS location directly from the moving vehicle.</p>
                   <p>• <strong className="text-[#FFF8EE]">Schedule estimate:</strong> Estimated arrival based on the published timetable when live GPS isn&apos;t broadcasting.</p>
                 </div>
               </div>
@@ -201,10 +201,10 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
               <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
                 <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
                   <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
-                  Is this an official RapidKL app?
+                  Is this an official transport authority app?
                 </h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
-                  No. BasBuddy is a free, independent community project built by and for Klang Valley commuters using open data from <strong>data.gov.my</strong>.
+                  No. BasBuddy is a free, independent community project built by and for Malaysian commuters using open data from <strong>data.gov.my</strong>.
                 </p>
               </div>
 
@@ -227,7 +227,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                 <MessageSquare className="w-8 h-8 text-[#F4A100] mx-auto" />
                 <h4 className="font-bold text-sm text-[#FFF8EE]">We&apos;d love your feedback!</h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 max-w-sm mx-auto">
-                  Have a suggestion, noticed a route discrepancy, or want to report a bug? Community feedback helps make BasBuddy better for all Klang Valley commuters.
+                  Have a suggestion, noticed a route discrepancy, or want to report a bug? Community feedback helps make BasBuddy better for all commuters.
                 </p>
               </div>
 

@@ -176,6 +176,8 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
             routes: [
               { routeId: '750', routeShortName: '750', routeLongName: 'Pasar Seni - Seksyen 2 Shah Alam', routeColor: 'F4A100' },
               { routeId: '772', routeShortName: '772', routeLongName: 'Pasar Seni - Subang Suria', routeColor: 'F4A100' },
+              { routeId: 'SA02', routeShortName: 'SA02', routeLongName: 'Hentian Bandar Seksyen 14 - KTM Batu 3', routeColor: '008716' },
+              { routeId: 'PJ01', routeShortName: 'PJ01', routeLongName: 'Taman Medan - LRT Taman Jaya', routeColor: '008716' },
             ],
           }),
         });
@@ -438,5 +440,44 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     const banner = page.getByLabel('Feed status banner');
     await expect(banner).toBeVisible({ timeout: 5000 });
     await expect(banner).toContainText('Live GPS feed delayed');
+  });
+
+  test('displays distinct service badges for Smart Selangor, PJ City, and RapidKL routes in search and route sheets', async ({ page }) => {
+    await page.goto('/');
+
+    // Open search overlay
+    const searchTrigger = page.getByRole('button', { name: 'Search stops, routes, hubs' });
+    await searchTrigger.click({ force: true });
+
+    // Filter to routes
+    const routesFilter = page.getByRole('button', { name: '🚌 Routes' });
+    await routesFilter.click();
+
+    // Verify service badges in search results list
+    const sa02Route = page.getByTestId('search-route-SA02');
+    await expect(sa02Route).toBeVisible();
+    await expect(sa02Route).toContainText('Smart Selangor');
+
+    const pj01Route = page.getByTestId('search-route-PJ01');
+    await expect(pj01Route).toBeVisible();
+    await expect(pj01Route).toContainText('PJ City Bus');
+
+    const rapidRoute = page.getByTestId('search-route-750');
+    await expect(rapidRoute).toBeVisible();
+    await expect(rapidRoute).toContainText('RapidKL');
+
+    // Click Smart Selangor SA02 route to open RouteTrackerSheet
+    await sa02Route.click();
+
+    // Verify service badge in RouteTrackerSheet header
+    const routeInspector = page.getByRole('complementary', { name: 'Route inspector' });
+    await expect(routeInspector).toBeVisible();
+    await expect(routeInspector).toContainText('SA02');
+    await expect(routeInspector).toContainText('Smart Selangor');
+
+    // Close route inspector
+    const closeBtn = page.getByRole('button', { name: 'Close route inspector' });
+    await closeBtn.click({ force: true });
+    await expect(routeInspector).not.toBeVisible();
   });
 });

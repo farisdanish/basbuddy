@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'BasBuddy',
         short_name: 'BasBuddy',
-        description: 'Unofficial RapidKL bus tracker — live ETAs for your stops.',
+        description: 'Live transit tracker for buses and rail across Malaysia.',
         theme_color: '#F4A100',        // Mango Peel (§11)
         background_color: '#101B2D',   // Harbour Navy (§11)
         display: 'standalone',

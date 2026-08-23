@@ -13,7 +13,7 @@ import { VALKEY_KEYS, VEHICLE_TTL_SECONDS } from '@basbuddy/shared';
 
 describe('GTFS-RT Poller & ETA Engine', () => {
   describe('decodeRealtimeFeed', () => {
-    it('decodes valid protobuf entities and filters invalid/out-of-bounds positions', () => {
+    it('decodes valid protobuf entities across Malaysia and filters invalid/out-of-bounds positions', () => {
       const feed = transit_realtime.FeedMessage.create({
         header: {
           gtfsRealtimeVersion: '2.0',
@@ -27,6 +27,24 @@ describe('GTFS-RT Poller & ETA Engine', () => {
               trip: { tripId: 'trip_101', routeId: '753' },
               position: { latitude: 3.0721, longitude: 101.5183, bearing: 90 },
               timestamp: 1700000010,
+            },
+          },
+          // Valid vehicle in Penang
+          {
+            id: 'veh_pg',
+            vehicle: {
+              trip: { tripId: 'trip_pg_1', routeId: '101' },
+              position: { latitude: 5.4141, longitude: 100.3288, bearing: 180 },
+              timestamp: 1700000015,
+            },
+          },
+          // Valid vehicle in Johor Bahru
+          {
+            id: 'veh_jb',
+            vehicle: {
+              trip: { tripId: 'trip_jb_1', routeId: 'F100' },
+              position: { latitude: 1.4927, longitude: 103.7414, bearing: 45 },
+              timestamp: 1700000020,
             },
           },
           // (0,0) position — must be dropped
@@ -51,14 +69,24 @@ describe('GTFS-RT Poller & ETA Engine', () => {
       const buffer = Buffer.from(transit_realtime.FeedMessage.encode(feed).finish());
       const decoded = decodeRealtimeFeed(buffer);
 
-      expect(decoded).toHaveLength(1);
-      const entity = decoded[0]!;
-      expect(entity.tripId).toBe('trip_101');
-      expect(entity.routeId).toBe('753');
-      expect(entity.lat).toBeCloseTo(3.0721, 4);
-      expect(entity.lon).toBeCloseTo(101.5183, 4);
-      expect(entity.bearing).toBe(90);
-      expect(entity.gtfsTimestamp).toBe(1700000010);
+      expect(decoded).toHaveLength(3);
+      expect(decoded.map((d) => d.tripId)).toEqual(['trip_101', 'trip_pg_1', 'trip_jb_1']);
+      
+      const entityKL = decoded[0]!;
+      expect(entityKL.tripId).toBe('trip_101');
+      expect(entityKL.routeId).toBe('753');
+      expect(entityKL.lat).toBeCloseTo(3.0721, 4);
+      expect(entityKL.lon).toBeCloseTo(101.5183, 4);
+      expect(entityKL.bearing).toBe(90);
+      expect(entityKL.gtfsTimestamp).toBe(1700000010);
+
+      const entityPG = decoded[1]!;
+      expect(entityPG.lat).toBeCloseTo(5.4141, 4);
+      expect(entityPG.lon).toBeCloseTo(100.3288, 4);
+
+      const entityJB = decoded[2]!;
+      expect(entityJB.lat).toBeCloseTo(1.4927, 4);
+      expect(entityJB.lon).toBeCloseTo(103.7414, 4);
     });
   });
 

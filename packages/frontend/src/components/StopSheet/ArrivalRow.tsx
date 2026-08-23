@@ -1,4 +1,5 @@
 import type { FreshnessStatus, StopArrival } from '@basbuddy/shared';
+import { getServiceBadge } from '../../utils/serviceBadges.ts';
 
 // ─── Utility: format ETA seconds to human-readable string ────────────────────
 
@@ -29,6 +30,7 @@ interface ArrivalRowProps {
 
 export function ArrivalRow({ arrival, onSelectRoute }: ArrivalRowProps) {
   const cls = freshnessClass(arrival.freshness);
+  const badge = getServiceBadge(arrival.routeShortName);
 
   return (
     <div className="flex items-center justify-between py-3.5 border-b border-white/5 last:border-0 hover:bg-white/[0.02] px-2 rounded-xl transition-colors">
@@ -44,9 +46,18 @@ export function ArrivalRow({ arrival, onSelectRoute }: ArrivalRowProps) {
         </button>
 
         <div className="min-w-0">
-          <p className="text-sm font-sans font-semibold text-[#FFF8EE] truncate">
-            {arrival.tripHeadsign}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-sans font-semibold text-[#FFF8EE] truncate">
+              {arrival.tripHeadsign}
+            </p>
+            {badge.type !== 'rapidkl' && (
+              <span
+                className={`text-[9px] font-mono px-1 py-0.2 rounded border shrink-0 ${badge.badgeClass}`}
+              >
+                {badge.label}
+              </span>
+            )}
+          </div>
           <p className="text-xs font-sans text-[#FFF8EE]/50 flex items-center gap-1.5 mt-0.5">
             {arrival.source === 'schedule' ? (
               <span>Schedule estimate</span>
