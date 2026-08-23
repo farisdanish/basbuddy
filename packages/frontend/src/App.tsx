@@ -151,6 +151,7 @@ export default function App() {
           loading={routeLoading}
           onClose={() => setSelectedRouteId(null)}
           onSelectStop={handleSelectStop}
+          selectedStopId={selectedStopId}
         />
       )}
 

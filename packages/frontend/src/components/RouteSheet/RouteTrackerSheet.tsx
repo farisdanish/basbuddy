@@ -9,6 +9,7 @@ interface RouteTrackerSheetProps {
   loading: boolean;
   onClose: () => void;
   onSelectStop: (stopId: string) => void;
+  selectedStopId?: string | null;
 }
 
 export function RouteTrackerSheet({
@@ -16,6 +17,7 @@ export function RouteTrackerSheet({
   loading: _loading,
   onClose,
   onSelectStop,
+  selectedStopId,
 }: RouteTrackerSheetProps) {
   const [activeDirectionIndex, setActiveDirectionIndex] = useState(0);
   const [timetableOpen, setTimetableOpen] = useState(false);
@@ -60,10 +62,10 @@ export function RouteTrackerSheet({
       <aside
         aria-label="Route inspector"
         data-testid="route-inspector"
-        className="absolute top-20 left-4 right-4 z-30 max-w-md mx-auto md:left-6 md:right-auto md:top-20 md:w-96 md:max-w-none md:mx-0 flex flex-col rounded-2xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden transition-all"
+        className="absolute top-20 left-4 right-4 z-30 max-w-md mx-auto md:left-6 md:right-auto md:top-20 md:w-96 md:max-w-none md:mx-0 md:max-h-[calc(100vh-6.5rem)] flex flex-col rounded-2xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden transition-all"
       >
         {/* Route Header */}
-        <div className="flex items-center justify-between gap-3 p-4 border-b border-white/10">
+        <div className="flex items-center justify-between gap-3 p-4 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center justify-center min-w-[44px] h-9 px-2.5 rounded-xl bg-[#F4A100] text-[#101B2D] font-display text-lg font-bold shadow-md shrink-0 select-none">
               {routeData?.routeShortName || '...'}
@@ -116,7 +118,7 @@ export function RouteTrackerSheet({
         </div>
 
         {/* Live vs Schedule Status & Timetable Notice */}
-        <div className="px-4 py-2.5 bg-[#101B2D]/70 border-b border-white/5">
+        <div className="px-4 py-2.5 bg-[#101B2D]/70 border-b border-white/5 shrink-0">
           {vehiclesCount === 0 ? (
             <div className="space-y-2">
               <div className="flex items-start gap-2 text-[11px] font-sans text-amber-200/90 leading-tight">
@@ -169,7 +171,7 @@ export function RouteTrackerSheet({
 
         {/* Direction selector if multiple directions exist */}
         {directions.length > 1 && (
-          <div className="flex items-center gap-1.5 px-4 py-2 bg-white/[0.02] border-b border-white/5 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 px-4 py-2 bg-white/[0.02] border-b border-white/5 overflow-x-auto no-scrollbar shrink-0">
             {directions.map((dir, idx) => (
               <button
                 key={`${dir.directionId}-${dir.tripHeadsign}`}
@@ -188,29 +190,56 @@ export function RouteTrackerSheet({
           </div>
         )}
 
-        {/* Horizontal sequence of stops along route */}
+        {/* Sequence of stops along route: Horizontal on mobile, Vertical list on desktop/web view */}
         {routeData?.stops && routeData.stops.length > 0 && (
-          <div className="p-3 bg-black/20">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-[#FFF8EE]/40 mb-1.5 px-1">
-              Route Stops (Tap stop to view arrivals)
+          <div className="p-3 bg-black/20 md:p-3.5 flex flex-col min-h-0 flex-1 overflow-hidden">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-[#FFF8EE]/40 mb-1.5 px-1 flex items-center justify-between shrink-0">
+              <span className="flex items-center gap-1.5">
+                <span>Route Stops</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-[9px] font-medium text-[#F4A100]">
+                  {routeData.stops.length}
+                </span>
+              </span>
+              <span className="text-[9px] text-[#FFF8EE]/30 hidden md:inline font-sans normal-case">
+                Click stop to view arrivals
+              </span>
             </div>
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-              {routeData.stops.map((stop, i) => (
-                <button
-                  key={stop.stopId}
-                  type="button"
-                  onClick={() => onSelectStop(stop.stopId)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-[#1F7A6C]/30 hover:border-[#1F7A6C]/50 border border-white/10 text-left transition-all shrink-0 active:scale-95 group"
-                  style={{ maxWidth: 160 }}
-                >
-                  <span className="flex items-center justify-center w-4 h-4 rounded-full bg-white/10 text-[10px] font-mono text-[#F4A100] shrink-0">
-                    {i + 1}
-                  </span>
-                  <span className="text-xs font-sans text-[#FFF8EE] truncate group-hover:text-[#F4A100]">
-                    {stop.stopName}
-                  </span>
-                </button>
-              ))}
+
+            {/* Mobile: horizontal scroll strip | Web/Desktop (md:): vertical scrollable list */}
+            <div className="flex flex-row md:flex-col items-center md:items-stretch gap-1.5 md:gap-1.5 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto no-scrollbar md:basbuddy-scroll pb-1 md:pb-0 md:pr-1 min-h-0 flex-1">
+              {routeData.stops.map((stop, i) => {
+                const isSelected = selectedStopId === stop.stopId;
+                return (
+                  <button
+                    key={stop.stopId}
+                    type="button"
+                    onClick={() => onSelectStop(stop.stopId)}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 md:py-2 rounded-xl text-left transition-all shrink-0 max-w-[160px] md:max-w-none md:w-full active:scale-[0.98] group ${
+                      isSelected
+                        ? 'bg-[#1F7A6C]/40 border-[#1F7A6C] ring-1 ring-[#1F7A6C]/60 text-[#FFF8EE]'
+                        : 'bg-white/5 hover:bg-[#1F7A6C]/30 hover:border-[#1F7A6C]/50 border border-white/10 text-[#FFF8EE]'
+                    }`}
+                  >
+                    <span
+                      className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-mono font-medium shrink-0 transition-colors ${
+                        isSelected
+                          ? 'bg-[#F4A100] text-[#101B2D] font-bold'
+                          : 'bg-white/10 text-[#F4A100] group-hover:bg-[#F4A100] group-hover:text-[#101B2D]'
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-sans text-[#FFF8EE] truncate group-hover:text-[#F4A100] transition-colors">
+                        {stop.stopName}
+                      </div>
+                      <div className="text-[10px] font-mono text-[#FFF8EE]/40 truncate hidden md:block">
+                        {stop.stopId}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

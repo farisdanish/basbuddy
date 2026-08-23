@@ -316,6 +316,19 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     await expect(routeInspector).toContainText('Pasar Seni - Seksyen 2 Shah Alam');
     await expect(routeInspector).toContainText('1 bus live');
 
+    // Verify stops are rendered in the route inspector list
+    await expect(routeInspector).toContainText('Pasar Seni Platform B');
+    await expect(routeInspector).toContainText('Mid Valley North Court');
+
+    // Clicking a stop in the route list selects it and opens stop sheet
+    const midValleyStop = routeInspector.getByRole('button', { name: /Mid Valley North Court/i });
+    await midValleyStop.click();
+    const stopHeading = page.getByRole('heading', { name: 'Mid Valley North Court' });
+    await expect(stopHeading).toBeVisible({ timeout: 5000 });
+
+    // Dismiss stop sheet
+    await page.keyboard.press('Escape');
+
     // Close route inspector
     const closeBtn = page.getByRole('button', { name: 'Close route inspector' });
     await closeBtn.click({ force: true });
