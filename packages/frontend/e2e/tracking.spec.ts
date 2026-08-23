@@ -388,6 +388,21 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     await closeTimetableBtn.click();
     await expect(timetableDialog).not.toBeVisible();
 
+    // Minimize route inspector on mobile
+    const minimizeBtn = page.getByRole('button', { name: 'Minimize route inspector' });
+    await expect(minimizeBtn).toBeVisible();
+    await minimizeBtn.click();
+
+    // Verify compact floating chip is visible
+    const expandBtn = page.getByRole('button', { name: 'Expand route details' });
+    await expect(expandBtn).toBeVisible();
+    await expect(expandBtn).toContainText('750');
+    await expect(expandBtn).toContainText('1 live');
+
+    // Tap expand button to restore full route card
+    await expandBtn.click();
+    await expect(page.getByRole('heading', { name: 'Pasar Seni - Seksyen 2 Shah Alam' })).toBeVisible();
+
     // Tap stop pill to open StopSheet drawer
     await stopPill.click();
     const stopHeading = page.getByRole('heading', { name: 'Pasar Seni Platform B' });

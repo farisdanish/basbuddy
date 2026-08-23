@@ -198,27 +198,27 @@ export default function App() {
         <span>Data: <a className="pointer-events-auto underline hover:text-[#FFF8EE]" href="https://data.gov.my" target="_blank" rel="noopener noreferrer">data.gov.my</a> / Prasarana ·{' '}
         <a className="pointer-events-auto underline hover:text-[#FFF8EE]" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> ·{' '}
         Unofficial</span>
-        <span>·</span>
+        <span className="hidden sm:inline">·</span>
         <button
           type="button"
           onClick={() => setInfoModalTab('about')}
-          className="pointer-events-auto underline hover:text-[#F4A100] transition-colors"
+          className="hidden sm:inline pointer-events-auto underline hover:text-[#F4A100] transition-colors"
         >
           About
         </button>
-        <span>·</span>
+        <span className="hidden sm:inline">·</span>
         <button
           type="button"
           onClick={() => setInfoModalTab('faq')}
-          className="pointer-events-auto underline hover:text-[#F4A100] transition-colors"
+          className="hidden sm:inline pointer-events-auto underline hover:text-[#F4A100] transition-colors"
         >
           FAQ
         </button>
-        <span>·</span>
+        <span className="hidden sm:inline">·</span>
         <button
           type="button"
           onClick={() => setInfoModalTab('feedback')}
-          className="pointer-events-auto underline hover:text-[#F4A100] transition-colors"
+          className="hidden sm:inline pointer-events-auto underline hover:text-[#F4A100] transition-colors"
         >
           Feedback
         </button>

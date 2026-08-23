@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Navigation, Radio, Star, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { X, Navigation, Radio, Star, Calendar, Clock, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react';
 import type { RouteDetailsResponse } from '@basbuddy/shared';
 import { useFavorites } from '../../hooks/useFavorites.ts';
 import { RouteTimetableModal } from './RouteTimetableModal.tsx';
@@ -21,6 +21,7 @@ export function RouteTrackerSheet({
 }: RouteTrackerSheetProps) {
   const [activeDirectionIndex, setActiveDirectionIndex] = useState(0);
   const [timetableOpen, setTimetableOpen] = useState(false);
+  const [isMobileMinimized, setIsMobileMinimized] = useState(false);
   const { favorites, addFavorite, removeFavorite } = useFavorites();
 
   const vehiclesCount = routeData?.vehicles?.length ?? 0;
@@ -56,6 +57,57 @@ export function RouteTrackerSheet({
     const formattedH = h % 12 === 0 ? 12 : h % 12;
     return `${formattedH}:${m} ${ampm}${nextDay ? ' (+1)' : ''}`;
   };
+
+  if (isMobileMinimized) {
+    return (
+      <>
+        <aside
+          aria-label="Route inspector"
+          data-testid="route-inspector"
+          className="absolute top-20 left-4 z-30 flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#182337]/95 border border-white/15 shadow-2xl backdrop-blur-xl transition-all animate-in fade-in md:hidden"
+        >
+          <button
+            type="button"
+            onClick={() => setIsMobileMinimized(false)}
+            aria-label="Expand route details"
+            className="flex items-center gap-2 text-left active:scale-95 transition-transform"
+          >
+            <div className="flex items-center justify-center px-2 py-0.5 rounded-lg bg-[#F4A100] text-[#101B2D] font-display text-sm font-bold shadow-sm select-none shrink-0">
+              {routeData?.routeShortName || '...'}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-mono">
+              <span className={`flex items-center gap-1 ${vehiclesCount > 0 ? 'text-[#E94B8C]' : 'text-amber-400/80'}`}>
+                <Radio className={`w-3 h-3 ${vehiclesCount > 0 ? 'animate-pulse' : ''}`} />
+                <span>{vehiclesCount} live</span>
+              </span>
+              <span className="text-[#FFF8EE]/40">•</span>
+              <span className="text-[#FFF8EE]/70 font-sans flex items-center gap-0.5 text-[11px]">
+                <span>Details</span>
+                <ChevronDown className="w-3.5 h-3.5 text-[#F4A100]" />
+              </span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close route inspector"
+            className="flex items-center justify-center w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 text-[#FFF8EE]/70 hover:text-[#FFF8EE] active:scale-90 transition-all ml-0.5"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </aside>
+
+        {routeData && (
+          <RouteTimetableModal
+            isOpen={timetableOpen}
+            onClose={() => setTimetableOpen(false)}
+            routeData={routeData}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -105,6 +157,16 @@ export function RouteTrackerSheet({
                 <Star className={`w-4 h-4 ${isFavorite ? 'fill-[#F4A100]' : ''}`} />
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => setIsMobileMinimized(true)}
+              aria-label="Minimize route inspector"
+              title="Minimize route card"
+              className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#FFF8EE]/80 hover:text-[#FFF8EE] active:scale-95 transition-all"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
 
             <button
               type="button"
