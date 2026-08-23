@@ -170,40 +170,51 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
               <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
                 <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
                   <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
-                  Why does a route show &quot;No live GPS telemetry in open feed&quot;?
+                  Why does it say &quot;No live GPS&quot; or &quot;0 buses live&quot;?
                 </h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
-                  Prasarana&apos;s public open feed only broadcasts telemetry for buses with active on-board GPS hardware transmitting at that moment. When buses are between departure intervals or in depot, BasBuddy automatically shows the published timetable schedule so you still know when the next bus departs.
+                  The open data feed only shares GPS for buses actively moving on the road. If a bus is waiting at the depot or between trips, we show the <strong>official timetable</strong> so you still know when the next bus is scheduled.
                 </p>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
                 <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
                   <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
-                  Why are there no bus license plate numbers?
+                  Can I see bus plate numbers (e.g. WXX 1234)?
                 </h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
-                  Public road registration plates (e.g. <code>WXX 1234</code>) are omitted by Prasarana in the open dataset. BasBuddy maps the active Trip ID and Route ID directly to destination headsigns, line numbers, and arrival countdowns.
+                  Not right now. RapidKL&apos;s open data doesn&apos;t include license plate numbers. We track buses by their <strong>Route Number</strong> (e.g. <code>750</code>, <code>T728</code>) and <strong>Destination</strong>.
                 </p>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
                 <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
                   <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
-                  How accurate are the arrival ETAs?
+                  How do arrival times work?
+                </h4>
+                <div className="text-[11px] text-[#FFF8EE]/70 pl-6 space-y-1">
+                  <p>• <strong className="text-[#E94B8C]">Live (Pulsing pink dot):</strong> Real GPS location directly from the moving bus.</p>
+                  <p>• <strong className="text-[#FFF8EE]">Schedule estimate:</strong> Estimated arrival based on the published timetable when live GPS isn&apos;t broadcasting.</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
+                <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
+                  Is this an official RapidKL app?
                 </h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
-                  When marked with a pulsing pink <strong>Live</strong> badge, arrival times are calculated by snapping GPS coordinates to road polyline shapes and measuring progress. When marked <strong>Schedule estimate</strong>, times are based on the published timetable.
+                  No. BasBuddy is a free, independent community project built by and for Klang Valley commuters using open data from <strong>data.gov.my</strong>.
                 </p>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
                 <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
                   <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
-                  Can I install BasBuddy on my phone?
+                  How do I install BasBuddy on my phone?
                 </h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
-                  Yes! BasBuddy is a Progressive Web App (PWA). In Chrome or Safari, tap <em>Share</em> or menu (⋮) and select <strong>&quot;Add to Home Screen&quot;</strong> for a standalone app experience.
+                  In Chrome or Safari on your phone, tap the browser menu (or Share button) and choose <strong>&quot;Add to Home Screen&quot;</strong>. It installs instantly and works just like an app!
                 </p>
               </div>
             </div>

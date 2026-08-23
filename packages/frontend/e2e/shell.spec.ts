@@ -171,7 +171,7 @@ test.describe('Frontend Shell (M5)', () => {
     // Switch to FAQ tab
     const faqTab = infoModal.getByRole('button', { name: 'FAQ' });
     await faqTab.click();
-    await expect(infoModal).toContainText('Why does a route show "No live GPS telemetry in open feed"?');
+    await expect(infoModal).toContainText('Why does it say "No live GPS"');
 
     // Switch to Feedback tab
     const feedbackTab = infoModal.getByRole('button', { name: 'Feedback' });
@@ -187,7 +187,7 @@ test.describe('Frontend Shell (M5)', () => {
     const footerFaq = page.getByRole('button', { name: 'FAQ', exact: true });
     await footerFaq.click();
     await expect(infoModal).toBeVisible();
-    await expect(infoModal).toContainText('Why are there no bus license plate numbers?');
+    await expect(infoModal).toContainText('Can I see bus plate numbers');
 
     // Close via Escape key
     await page.keyboard.press('Escape');
