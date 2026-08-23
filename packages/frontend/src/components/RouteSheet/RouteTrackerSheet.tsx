@@ -22,7 +22,7 @@ export function RouteTrackerSheet({
 }: RouteTrackerSheetProps) {
   const [activeDirectionIndex, setActiveDirectionIndex] = useState(0);
   const [timetableOpen, setTimetableOpen] = useState(false);
-  const [isMobileMinimized, setIsMobileMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const { favorites, addFavorite, removeFavorite } = useFavorites();
 
   const vehiclesCount = routeData?.vehicles?.length ?? 0;
@@ -65,17 +65,17 @@ export function RouteTrackerSheet({
     return `${formattedH}:${m} ${ampm}${nextDay ? ' (+1)' : ''}`;
   };
 
-  if (isMobileMinimized) {
+  if (isMinimized) {
     return (
       <>
         <aside
           aria-label="Route inspector"
           data-testid="route-inspector"
-          className="absolute top-20 left-4 z-30 flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#182337]/95 border border-white/15 shadow-2xl backdrop-blur-xl transition-all animate-in fade-in md:hidden"
+          className="absolute top-20 left-4 md:left-6 z-30 flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#182337]/95 border border-white/15 shadow-2xl backdrop-blur-xl transition-all animate-in fade-in"
         >
           <button
             type="button"
-            onClick={() => setIsMobileMinimized(false)}
+            onClick={() => setIsMinimized(false)}
             aria-label="Expand route details"
             className="flex items-center gap-2 text-left active:scale-95 transition-transform"
           >
@@ -112,6 +112,7 @@ export function RouteTrackerSheet({
             routeData={routeData}
             onSelectStop={onSelectStop}
             selectedStopId={selectedStopId}
+            initialDirectionIndex={activeDirectionIndex}
           />
         )}
       </>
@@ -178,10 +179,10 @@ export function RouteTrackerSheet({
 
             <button
               type="button"
-              onClick={() => setIsMobileMinimized(true)}
+              onClick={() => setIsMinimized(true)}
               aria-label="Minimize route inspector"
               title="Minimize route card"
-              className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#FFF8EE]/80 hover:text-[#FFF8EE] active:scale-95 transition-all"
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#FFF8EE]/80 hover:text-[#FFF8EE] active:scale-95 transition-all"
             >
               <ChevronUp className="w-4 h-4" />
             </button>
@@ -339,6 +340,7 @@ export function RouteTrackerSheet({
           routeData={routeData}
           onSelectStop={onSelectStop}
           selectedStopId={selectedStopId}
+          initialDirectionIndex={activeDirectionIndex}
         />
       )}
     </>

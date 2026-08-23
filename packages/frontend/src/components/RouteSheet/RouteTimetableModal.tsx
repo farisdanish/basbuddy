@@ -9,6 +9,7 @@ interface RouteTimetableModalProps {
   routeData: RouteDetailsResponse;
   onSelectStop?: (stopId: string) => void;
   selectedStopId?: string | null;
+  initialDirectionIndex?: number;
 }
 
 type TimetableTab = 'timeline' | 'schedule' | 'calculator';
@@ -88,10 +89,17 @@ export function RouteTimetableModal({
   routeData,
   onSelectStop,
   selectedStopId,
+  initialDirectionIndex = 0,
 }: RouteTimetableModalProps) {
   const [activeTab, setActiveTab] = useState<TimetableTab>('timeline');
-  const [activeDirectionIndex, setActiveDirectionIndex] = useState<number>(0);
+  const [activeDirectionIndex, setActiveDirectionIndex] = useState<number>(initialDirectionIndex);
   const [selectedTripId, setSelectedTripId] = useState<string>('');
+
+  useEffect(() => {
+    if (initialDirectionIndex !== undefined) {
+      setActiveDirectionIndex(initialDirectionIndex);
+    }
+  }, [initialDirectionIndex]);
 
   const directions = routeData.directions ?? [];
   const activeDirection = directions[activeDirectionIndex] ?? directions[0];

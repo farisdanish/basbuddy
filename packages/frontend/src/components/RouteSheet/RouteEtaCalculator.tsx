@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ArrowUpDown, Clock, Radio, Sparkles } from 'lucide-react';
 import type { RouteStopItem, LiveVehicle } from '@basbuddy/shared';
 
@@ -36,6 +36,18 @@ export function RouteEtaCalculator({
     if (initialDestStopId && initialDestStopId !== originStopId) return initialDestStopId;
     return stops[Math.min(stops.length - 1, 5)]?.stopId || stops[stops.length - 1]?.stopId || '';
   });
+
+  useEffect(() => {
+    if (stops.length > 0) {
+      if (!stops.some((s) => s.stopId === originStopId)) {
+        setOriginStopId(initialOriginStopId && stops.some((s) => s.stopId === initialOriginStopId) ? initialOriginStopId : stops[0]!.stopId);
+      }
+      if (!stops.some((s) => s.stopId === destStopId)) {
+        const fallbackDest = stops[Math.min(stops.length - 1, 5)]?.stopId || stops[stops.length - 1]!.stopId;
+        setDestStopId(fallbackDest);
+      }
+    }
+  }, [stops, initialOriginStopId, originStopId, destStopId]);
 
   const originIndex = useMemo(() => {
     return stops.findIndex((s) => s.stopId === originStopId);

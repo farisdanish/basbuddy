@@ -229,7 +229,10 @@ export function StopSheet({ stopId, onClose, onSelectRoute }: StopSheetProps) {
                       <ArrivalRow
                         key={`${arrival.tripId}-${arrival.etaSeconds}`}
                         arrival={arrival}
-                        onSelectRoute={onSelectRoute}
+                        onSelectRoute={(rId) => {
+                          onSelectRoute?.(rId);
+                          onClose();
+                        }}
                       />
                     ))}
                   </div>
@@ -259,7 +262,10 @@ export function StopSheet({ stopId, onClose, onSelectRoute }: StopSheetProps) {
                       {timetableData.departures.map((dep, idx) => (
                         <div
                           key={`${dep.tripId}-${dep.departureTime}-${idx}`}
-                          onClick={() => onSelectRoute && onSelectRoute(dep.routeId)}
+                          onClick={() => {
+                            onSelectRoute?.(dep.routeId);
+                            onClose();
+                          }}
                           className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-[#1F7A6C]/50 hover:bg-[#1F7A6C]/20 transition-all cursor-pointer group active:scale-[0.99]"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
