@@ -18,7 +18,19 @@ function createMockValkey() {
       return 'OK';
     }),
     smembers: vi.fn(async (key: string) => Array.from(setStore.get(key) ?? [])),
+    scard: vi.fn(async (key: string) => setStore.get(key)?.size ?? 0),
     mget: vi.fn(async (...keys: string[]) => keys.map((k) => store.get(k) ?? null)),
+    pipeline: vi.fn(() => {
+      const calls: Array<() => [null, number]> = [];
+      const pipe = {
+        scard: (key: string) => {
+          calls.push(() => [null, setStore.get(key)?.size ?? 0]);
+          return pipe;
+        },
+        exec: async () => calls.map((c) => c()),
+      };
+      return pipe;
+    }),
   };
 }
 
@@ -257,7 +269,7 @@ describe('BasBuddy REST API (M4)', () => {
 
   // ── 4. GET /api/routes ─────────────────────────────────────────────────────
   describe('GET /api/routes', () => {
-    it('returns RoutesResponse ordered by route_short_name', async () => {
+    it('returns RoutesResponse ordered by route_short_name with liveBusCount', async () => {
       mockPool.query.mockResolvedValueOnce({
         rows: [
           { route_id: '753', route_short_name: '753', route_long_name: 'Shah Alam', route_color: 'FF0000' },
@@ -266,11 +278,15 @@ describe('BasBuddy REST API (M4)', () => {
         rowCount: 2,
       });
 
+      mockValkey.setStore.set(VALKEY_KEYS.routeVehicles('753'), new Set(['VEH_1']));
+
       const res = await request(app).get('/api/routes');
       expect(res.status).toBe(200);
       expect(res.body.routes).toHaveLength(2);
       expect(res.body.routes[0].routeId).toBe('753');
+      expect(res.body.routes[0].liveBusCount).toBe(1);
       expect(res.body.routes[1].routeId).toBe('754');
+      expect(res.body.routes[1].liveBusCount).toBe(0);
     });
 
     it('GET /api/routes/:routeId returns RouteDetailsResponse with timetable', async () => {

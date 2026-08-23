@@ -146,6 +146,7 @@ export function SearchOverlay({
             <div className="space-y-1.5">
               {routes.map((route) => {
                 const badge = getServiceBadge(route.routeShortName);
+                const hasLiveVehicles = route.liveBusCount !== undefined && route.liveBusCount > 0;
                 return (
                   <button
                     key={route.routeId}
@@ -161,18 +162,36 @@ export function SearchOverlay({
                       {route.routeShortName}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div className="text-sm font-sans font-medium text-[#FFF8EE] truncate">
                           {route.routeLongName}
                         </div>
-                        <span
-                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${badge.badgeClass}`}
-                        >
-                          {badge.label}
-                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span
+                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${badge.badgeClass}`}
+                          >
+                            {badge.label}
+                          </span>
+                          {hasLiveVehicles ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0 shadow-sm">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              <span>{route.liveBusCount} live</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-[#FFF8EE]/40 border border-white/10 shrink-0">
+                              Schedule
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs font-mono text-[#FFF8EE]/40 mt-0.5">
-                        Route ID: {route.routeId}
+                      <div className="text-xs font-mono text-[#FFF8EE]/40 mt-0.5 flex items-center gap-1.5">
+                        <span>Route ID: {route.routeId}</span>
+                        <span>•</span>
+                        <span>
+                          {hasLiveVehicles
+                            ? `${route.liveBusCount} ${route.liveBusCount === 1 ? 'bus' : 'buses'} tracking now`
+                            : 'Timetable only'}
+                        </span>
                       </div>
                     </div>
                   </button>

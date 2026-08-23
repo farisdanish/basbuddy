@@ -174,10 +174,10 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             routes: [
-              { routeId: '750', routeShortName: '750', routeLongName: 'Pasar Seni - Seksyen 2 Shah Alam', routeColor: 'F4A100' },
-              { routeId: '772', routeShortName: '772', routeLongName: 'Pasar Seni - Subang Suria', routeColor: 'F4A100' },
-              { routeId: 'SA02', routeShortName: 'SA02', routeLongName: 'Hentian Bandar Seksyen 14 - KTM Batu 3', routeColor: '008716' },
-              { routeId: 'PJ01', routeShortName: 'PJ01', routeLongName: 'Taman Medan - LRT Taman Jaya', routeColor: '008716' },
+              { routeId: '750', routeShortName: '750', routeLongName: 'Pasar Seni - Seksyen 2 Shah Alam', routeColor: 'F4A100', liveBusCount: 2 },
+              { routeId: '772', routeShortName: '772', routeLongName: 'Pasar Seni - Subang Suria', routeColor: 'F4A100', liveBusCount: 0 },
+              { routeId: 'SA02', routeShortName: 'SA02', routeLongName: 'Hentian Bandar Seksyen 14 - KTM Batu 3', routeColor: '008716', liveBusCount: 1 },
+              { routeId: 'PJ01', routeShortName: 'PJ01', routeLongName: 'Taman Medan - LRT Taman Jaya', routeColor: '008716', liveBusCount: 0 },
             ],
           }),
         });
@@ -309,6 +309,7 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     // Click route result
     const routeButton = page.getByRole('button', { name: /750.*Pasar Seni/i });
     await expect(routeButton).toBeVisible({ timeout: 5000 });
+    await expect(routeButton).toContainText('2 live');
     await routeButton.click();
 
     // Verify RouteTrackerSheet opens with title and active live bus count

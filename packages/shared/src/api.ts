@@ -96,6 +96,8 @@ export interface RouteListItem {
   routeLongName: string;
   /** Hex color string from routes.txt, e.g. "FF0000". May be empty string. */
   routeColor: string;
+  /** Number of active live GPS vehicles tracking on this route */
+  liveBusCount?: number;
 }
 
 export interface RoutesResponse {

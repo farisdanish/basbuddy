@@ -46,9 +46,10 @@ function nowInKL(): { dayOfWeek: DayName; secondsSinceMidnight: number } {
 }
 
 // ── GET /api/routes ────────────────────────────────────────────────────────────
-// Returns all routes from Postgres (static data).
+// Returns all routes from Postgres (static data) along with active live bus counts from Valkey.
 routesRouter.get('/routes', async (req, res) => {
   const pool = req.app.locals['pool'] as Pool;
+  const valkey = req.app.locals['valkey'] as Redis | undefined;
   try {
     const result = await pool.query<{
       route_id: string;
@@ -57,12 +58,34 @@ routesRouter.get('/routes', async (req, res) => {
       route_color: string;
     }>('SELECT route_id, route_short_name, route_long_name, route_color FROM routes ORDER BY route_short_name');
 
+    const liveCounts: Record<string, number> = {};
+    if (valkey && result.rows.length > 0 && typeof valkey.pipeline === 'function') {
+      try {
+        const pipeline = valkey.pipeline();
+        for (const r of result.rows) {
+          pipeline.scard(VALKEY_KEYS.routeVehicles(r.route_id));
+        }
+        const counts = await pipeline.exec();
+        if (counts) {
+          counts.forEach(([err, count], idx) => {
+            if (!err && typeof count === 'number') {
+              const routeId = result.rows[idx]!.route_id;
+              liveCounts[routeId] = count;
+            }
+          });
+        }
+      } catch (cacheErr) {
+        console.warn('[api/routes] Valkey live count lookup warning:', cacheErr);
+      }
+    }
+
     const response: RoutesResponse = {
       routes: result.rows.map((r) => ({
         routeId: r.route_id,
         routeShortName: r.route_short_name,
         routeLongName: r.route_long_name,
         routeColor: r.route_color,
+        liveBusCount: liveCounts[r.route_id] ?? 0,
       })),
     };
     res.json(response);
