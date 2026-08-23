@@ -44,7 +44,10 @@ BasBuddy strictly mirrors the official open data stream from [`data.gov.my`](htt
 3. **Rate Limits & Polling Intervals**:
    - Upstream API rate limits on `data.gov.my` (~4 requests/minute) dictate a single-instance **30-second polling cycle**.
    - GPS telemetry latency is typically 30–60 seconds behind real-world vehicle position.
-4. **Transparent Fallbacks & Freshness Badging**:
+4. **Vehicle Identification & License Plates**:
+   - The public GTFS-RT stream from `data.gov.my` broadcasts vehicle coordinates, bearing, trip IDs, and route numbers.
+   - Road vehicle registration plate numbers (e.g., `WXX 1234`) are **omitted by Prasarana** in the open dataset. BasBuddy resolves live buses by mapping active `trip_id` and `route_id` to determine route numbers, destination headsigns, and stop countdowns.
+5. **Transparent Fallbacks & Freshness Badging**:
    - **🟢 Live**: Verified real-time GPS telemetry updated within the last 120 seconds.
    - **🟡 Stale**: Telemetry between 120s and 240s old (e.g., GPS tunnel or bridge dropout).
    - **🔴 Signal Lost / Schedule**: If GPS telemetry is unavailable, BasBuddy automatically displays published static timetable departure schedules and explicitly flags the arrival as non-realtime.
