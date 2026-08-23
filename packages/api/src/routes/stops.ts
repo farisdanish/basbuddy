@@ -196,6 +196,68 @@ stopsRouter.get('/stops/:stopId/etas', async (req, res) => {
   }
 });
 
+// ── GET /api/stops/:stopId/timetable ──────────────────────────────────────────
+// Returns all scheduled departures for a stop across all routes today.
+stopsRouter.get('/stops/:stopId/timetable', async (req, res) => {
+  const pool = req.app.locals['pool'] as Pool;
+  const { stopId } = req.params;
+
+  try {
+    const stopResult = await pool.query<{ stop_id: string; stop_name: string }>(
+      'SELECT stop_id, stop_name FROM stops WHERE stop_id = $1',
+      [stopId],
+    );
+    if (stopResult.rows.length === 0) {
+      res.status(404).json({ error: 'stop_not_found' });
+      return;
+    }
+    const stopName = stopResult.rows[0]!.stop_name;
+
+    const nowKL = nowInKL();
+    const dayOfWeek = nowKL.dayOfWeek;
+
+    const scheduleResult = await pool.query<{
+      trip_id: string;
+      route_id: string;
+      route_short_name: string;
+      trip_headsign: string;
+      departure_time: string;
+      direction_id: number;
+    }>(
+      `SELECT st.trip_id, t.route_id, r.route_short_name, t.trip_headsign, st.departure_time, t.direction_id
+       FROM stop_times st
+       JOIN trips t ON t.trip_id = st.trip_id
+       JOIN routes r ON r.route_id = t.route_id
+       JOIN calendar c ON c.service_id = t.service_id
+       WHERE st.stop_id = $1
+         AND c.${dayOfWeek} = 1
+         AND c.start_date <= CURRENT_DATE
+         AND c.end_date >= CURRENT_DATE
+       ORDER BY st.departure_time ASC`,
+      [stopId],
+    );
+
+    const departures = scheduleResult.rows.map((row) => ({
+      tripId: row.trip_id,
+      routeId: row.route_id,
+      routeShortName: row.route_short_name,
+      tripHeadsign: row.trip_headsign,
+      departureTime: row.departure_time,
+      directionId: row.direction_id,
+    }));
+
+    const response = {
+      stopId,
+      stopName,
+      departures,
+    };
+    res.json(response);
+  } catch (err) {
+    console.error(`[api/stops] Error for stop timetable stopId=${stopId}:`, err);
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -72,6 +72,17 @@ routesRouter.get('/routes', async (req, res) => {
   }
 });
 
+function haversineDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // ── GET /api/routes/:routeId ──────────────────────────────────────────────────
 // Returns detailed route info including polyline shapes, ordered stops, directions, and live vehicles.
 routesRouter.get('/routes/:routeId', async (req, res) => {
@@ -112,56 +123,68 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
       [routeId],
     );
 
-    const directions = dirRes.rows.map((d) => ({
-      directionId: d.direction_id,
-      tripHeadsign: d.trip_headsign,
-    }));
+    const directions = [];
+    let primaryShapes: Array<[number, number]> = [];
+    let primaryStops: RouteStopItem[] = [];
 
-    const sampleTripId = dirRes.rows[0]?.trip_id;
-    const sampleShapeId = dirRes.rows.find((d) => d.shape_id && d.shape_id.trim() !== '')?.shape_id;
+    // For each direction found:
+    for (let i = 0; i < dirRes.rows.length; i++) {
+      const d = dirRes.rows[i]!;
+      let dirShapes: Array<[number, number]> = [];
+      if (d.shape_id && d.shape_id.trim() !== '') {
+        const shapeRes = await pool.query<{
+          shape_pt_lat: number;
+          shape_pt_lon: number;
+        }>(
+          'SELECT shape_pt_lat, shape_pt_lon FROM shapes WHERE shape_id = $1 ORDER BY shape_pt_sequence ASC',
+          [d.shape_id],
+        );
+        dirShapes = shapeRes.rows.map((s) => [s.shape_pt_lat, s.shape_pt_lon]);
+      }
 
-    // 3. Get shapes (polyline points)
-    let shapes: Array<[number, number]> = [];
-    if (sampleShapeId) {
-      const shapeRes = await pool.query<{
-        shape_pt_lat: number;
-        shape_pt_lon: number;
-      }>(
-        'SELECT shape_pt_lat, shape_pt_lon FROM shapes WHERE shape_id = $1 ORDER BY shape_pt_sequence ASC',
-        [sampleShapeId],
-      );
-      shapes = shapeRes.rows.map((s) => [s.shape_pt_lat, s.shape_pt_lon]);
-    }
+      let dirStops: RouteStopItem[] = [];
+      if (d.trip_id) {
+        const stopsRes = await pool.query<{
+          stop_id: string;
+          stop_name: string;
+          stop_lat: number;
+          stop_lon: number;
+          stop_sequence: number;
+          arrival_time?: string;
+          departure_time?: string;
+        }>(
+          `SELECT s.stop_id, s.stop_name, s.stop_lat, s.stop_lon, st.stop_sequence, st.arrival_time, st.departure_time
+           FROM stop_times st
+           JOIN stops s ON s.stop_id = st.stop_id
+           WHERE st.trip_id = $1
+           ORDER BY st.stop_sequence ASC`,
+          [d.trip_id],
+        );
+        dirStops = stopsRes.rows.map((s) => ({
+          stopId: s.stop_id,
+          stopName: s.stop_name,
+          lat: s.stop_lat,
+          lon: s.stop_lon,
+          stopSequence: s.stop_sequence,
+          scheduledTime: s.departure_time || s.arrival_time || null,
+        }));
+      }
 
-    // 4. Get stops along representative trip
-    let stops: RouteStopItem[] = [];
-    if (sampleTripId) {
-      const stopsRes = await pool.query<{
-        stop_id: string;
-        stop_name: string;
-        stop_lat: number;
-        stop_lon: number;
-        stop_sequence: number;
-      }>(
-        `SELECT s.stop_id, s.stop_name, s.stop_lat, s.stop_lon, st.stop_sequence
-         FROM stop_times st
-         JOIN stops s ON s.stop_id = st.stop_id
-         WHERE st.trip_id = $1
-         ORDER BY st.stop_sequence ASC`,
-        [sampleTripId],
-      );
-      stops = stopsRes.rows.map((s) => ({
-        stopId: s.stop_id,
-        stopName: s.stop_name,
-        lat: s.stop_lat,
-        lon: s.stop_lon,
-        stopSequence: s.stop_sequence,
-      }));
-    }
+      if (dirShapes.length === 0 && dirStops.length > 0) {
+        dirShapes = dirStops.map((s) => [s.lat, s.lon]);
+      }
 
-    // If shapes is empty but stops exist, use stop coordinates as polyline fallback
-    if (shapes.length === 0 && stops.length > 0) {
-      shapes = stops.map((s) => [s.lat, s.lon]);
+      directions.push({
+        directionId: d.direction_id,
+        tripHeadsign: d.trip_headsign,
+        stops: dirStops,
+        shapes: dirShapes,
+      });
+
+      if (i === 0) {
+        primaryShapes = dirShapes;
+        primaryStops = dirStops;
+      }
     }
 
     // 5. Get live vehicles from Valkey
@@ -189,6 +212,44 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
               ? 'stale'
               : 'live';
 
+        // Find nearest stop along route stops for progress tracking
+        let nearestStopId: string | null = null;
+        let nextStopId: string | null = null;
+        let minDistance = Infinity;
+        let nearestIdx = -1;
+
+        for (let i = 0; i < primaryStops.length; i++) {
+          const st = primaryStops[i]!;
+          const d = haversineDistanceMeters(vc.lat, vc.lon, st.lat, st.lon);
+          if (d < minDistance) {
+            minDistance = d;
+            nearestStopId = st.stopId;
+            nearestIdx = i;
+          }
+        }
+
+        if (nearestIdx >= 0 && nearestIdx < primaryStops.length - 1) {
+          nextStopId = primaryStops[nearestIdx + 1]?.stopId ?? null;
+        } else if (nearestIdx >= 0) {
+          nextStopId = primaryStops[nearestIdx]?.stopId ?? null;
+        }
+
+        // Calculate downstream stop ETAs if vehicle is live/stale
+        if (freshness !== 'signal_lost' && nearestIdx >= 0) {
+          const AVG_SPEED_MS = (25 * 1000) / 3600; // ~6.94 m/s (25 km/h)
+          let accumulatedDist = minDistance;
+          for (let s = nearestIdx + 1; s < primaryStops.length; s++) {
+            const prevStop = primaryStops[s - 1]!;
+            const currStop = primaryStops[s]!;
+            accumulatedDist += haversineDistanceMeters(prevStop.lat, prevStop.lon, currStop.lat, currStop.lon);
+            const eta = Math.round(accumulatedDist / AVG_SPEED_MS);
+            if (!currStop.etaSeconds || eta < currStop.etaSeconds) {
+              currStop.etaSeconds = eta;
+              currStop.freshness = freshness;
+            }
+          }
+        }
+
         vehicles.push({
           tripId: vc.tripId,
           routeId: vc.routeId,
@@ -197,6 +258,8 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
           bearing: vc.bearing,
           timestamp: vc.timestamp,
           freshness,
+          nearestStopId,
+          nextStopId,
         });
       }
     }
@@ -269,8 +332,8 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
       routeLongName: route.route_long_name,
       routeColor: route.route_color,
       directions,
-      shapes,
-      stops,
+      shapes: primaryShapes,
+      stops: primaryStops,
       vehicles,
       timetable,
     };
@@ -278,6 +341,90 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
     res.json(response);
   } catch (err) {
     console.error(`[api/routes] Error for routeId=${routeId}:`, err);
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+// ── GET /api/routes/:routeId/timetable ─────────────────────────────────────────
+// Returns full timetable departures for a route, optionally filtered by stopId and directionId.
+routesRouter.get('/routes/:routeId/timetable', async (req, res) => {
+  const pool = req.app.locals['pool'] as Pool;
+  const { routeId } = req.params;
+  const { stopId, directionId: dirStr } = req.query;
+  const directionId = dirStr !== undefined ? parseInt(String(dirStr), 10) : undefined;
+
+  try {
+    const nowKL = nowInKL();
+    const dayOfWeek = nowKL.dayOfWeek;
+    const secondsSinceMidnight = nowKL.secondsSinceMidnight;
+
+    let query = `
+      SELECT t.trip_id, t.direction_id, t.trip_headsign, st.departure_time, st.arrival_time, st.stop_sequence, s.stop_id, s.stop_name
+      FROM trips t
+      JOIN calendar c ON c.service_id = t.service_id
+      JOIN stop_times st ON st.trip_id = t.trip_id
+      JOIN stops s ON s.stop_id = st.stop_id
+      WHERE t.route_id = $1
+        AND c.${dayOfWeek} = 1
+        AND c.start_date <= CURRENT_DATE
+        AND c.end_date >= CURRENT_DATE
+    `;
+    const params: unknown[] = [routeId];
+
+    if (stopId && typeof stopId === 'string') {
+      params.push(stopId);
+      query += ` AND st.stop_id = $${params.length}`;
+    } else {
+      // Default to origin departure (min stop_sequence per trip)
+      query += ` AND st.stop_sequence = (
+        SELECT MIN(st2.stop_sequence) FROM stop_times st2 WHERE st2.trip_id = t.trip_id
+      )`;
+    }
+
+    if (directionId !== undefined && !isNaN(directionId)) {
+      params.push(directionId);
+      query += ` AND t.direction_id = $${params.length}`;
+    }
+
+    query += ` ORDER BY st.departure_time ASC`;
+
+    const result = await pool.query<{
+      trip_id: string;
+      direction_id: number;
+      trip_headsign: string;
+      departure_time: string;
+      arrival_time: string;
+      stop_sequence: number;
+      stop_id: string;
+      stop_name: string;
+    }>(query, params);
+
+    const departures: RouteScheduledDeparture[] = result.rows.map((r) => ({
+      tripId: r.trip_id,
+      departureTime: r.departure_time || r.arrival_time,
+      tripHeadsign: r.trip_headsign,
+      directionId: r.direction_id,
+    }));
+
+    const nextDepartures = departures.filter((d) => {
+      try {
+        return parseGtfsTime(d.departureTime) >= secondsSinceMidnight;
+      } catch {
+        return true;
+      }
+    });
+
+    const response: RouteTimetable = {
+      firstBusTime: departures[0]?.departureTime ?? null,
+      lastBusTime: departures[departures.length - 1]?.departureTime ?? null,
+      totalTripsToday: departures.length,
+      nextDepartures,
+      allDepartures: departures,
+    };
+
+    res.json(response);
+  } catch (err) {
+    console.error(`[api/routes] Error fetching timetable for routeId=${routeId}:`, err);
     res.status(500).json({ error: 'internal_error' });
   }
 });

@@ -47,6 +47,11 @@ export function RouteTrackerSheet({
     }
   };
 
+  const activeDirection = directions[activeDirectionIndex] ?? directions[0];
+  const activeStops = activeDirection?.stops && activeDirection.stops.length > 0
+    ? activeDirection.stops
+    : (routeData?.stops ?? []);
+
   const nextDeparture = timetable?.nextDepartures?.[0];
 
   const formatTimeDisplay = (timeStr: string) => {
@@ -105,6 +110,8 @@ export function RouteTrackerSheet({
             isOpen={timetableOpen}
             onClose={() => setTimetableOpen(false)}
             routeData={routeData}
+            onSelectStop={onSelectStop}
+            selectedStopId={selectedStopId}
           />
         )}
       </>
@@ -143,10 +150,10 @@ export function RouteTrackerSheet({
                   <Radio className={`w-3 h-3 ${vehiclesCount > 0 ? 'animate-pulse' : ''}`} />
                   {vehiclesCount} {vehiclesCount === 1 ? 'bus live' : 'buses live'}
                 </span>
-                {routeData?.stops && (
+                {activeStops && (
                   <>
                     <span>•</span>
-                    <span>{routeData.stops.length} stops</span>
+                    <span>{activeStops.length} stops</span>
                   </>
                 )}
               </div>
@@ -236,7 +243,7 @@ export function RouteTrackerSheet({
                 className="flex items-center gap-1 text-[11px] font-sans font-medium text-[#FFF8EE]/60 hover:text-[#F4A100] transition-colors"
               >
                 <Calendar className="w-3 h-3" />
-                <span>Timetable</span>
+                <span>Timetable & ETAs</span>
               </button>
             </div>
           )}
@@ -244,7 +251,7 @@ export function RouteTrackerSheet({
 
         {/* Direction selector if multiple directions exist */}
         {directions.length > 1 && (
-          <div className="flex items-center gap-1.5 px-4 py-2 bg-white/[0.02] border-b border-white/5 overflow-x-auto no-scrollbar shrink-0">
+          <div className="flex items-center gap-1.5 px-3 py-2 bg-white/[0.02] border-b border-white/5 overflow-x-auto no-scrollbar shrink-0">
             {directions.map((dir, idx) => (
               <button
                 key={`${dir.directionId}-${dir.tripHeadsign}`}
@@ -257,20 +264,20 @@ export function RouteTrackerSheet({
                 }`}
               >
                 <Navigation className="w-3 h-3" />
-                <span className="truncate max-w-[140px]">{dir.tripHeadsign || `Direction ${dir.directionId}`}</span>
+                <span className="truncate max-w-[140px]">➔ Towards {dir.tripHeadsign || `Direction ${dir.directionId}`}</span>
               </button>
             ))}
           </div>
         )}
 
         {/* Sequence of stops along route: Horizontal on mobile, Vertical list on desktop/web view */}
-        {routeData?.stops && routeData.stops.length > 0 && (
+        {activeStops && activeStops.length > 0 && (
           <div className="p-3 bg-black/20 md:p-3.5 flex flex-col min-h-0 flex-1 overflow-hidden">
             <div className="text-[10px] font-mono uppercase tracking-wider text-[#FFF8EE]/40 mb-1.5 px-1 flex items-center justify-between shrink-0">
               <span className="flex items-center gap-1.5">
                 <span>Route Stops</span>
                 <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-[9px] font-medium text-[#F4A100]">
-                  {routeData.stops.length}
+                  {activeStops.length}
                 </span>
               </span>
               <span className="text-[9px] text-[#FFF8EE]/30 hidden md:inline font-sans normal-case">
@@ -280,8 +287,9 @@ export function RouteTrackerSheet({
 
             {/* Mobile: horizontal scroll strip | Web/Desktop (md:): vertical scrollable list */}
             <div className="flex flex-row md:flex-col items-center md:items-stretch gap-1.5 md:gap-1.5 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto no-scrollbar md:basbuddy-scroll pb-1 md:pb-0 md:pr-1 min-h-0 flex-1">
-              {routeData.stops.map((stop, i) => {
+              {activeStops.map((stop, i) => {
                 const isSelected = selectedStopId === stop.stopId;
+                const hasEta = stop.etaSeconds !== undefined && stop.etaSeconds !== null;
                 return (
                   <button
                     key={stop.stopId}
@@ -310,6 +318,11 @@ export function RouteTrackerSheet({
                         {stop.stopId}
                       </div>
                     </div>
+                    {hasEta && (
+                      <span className="hidden md:inline-flex text-[10px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                        {Math.round(stop.etaSeconds! / 60)}m
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -324,6 +337,8 @@ export function RouteTrackerSheet({
           isOpen={timetableOpen}
           onClose={() => setTimetableOpen(false)}
           routeData={routeData}
+          onSelectStop={onSelectStop}
+          selectedStopId={selectedStopId}
         />
       )}
     </>

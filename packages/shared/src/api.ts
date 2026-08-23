@@ -108,11 +108,20 @@ export interface RouteStopItem {
   lat: number;
   lon: number;
   stopSequence: number;
+  /** Scheduled arrival/departure time e.g. "08:15:00" for next/active trip */
+  scheduledTime?: string | null;
+  /** Live ETA in seconds from nearest active bus if available */
+  etaSeconds?: number | null;
+  freshness?: FreshnessStatus;
 }
 
 export interface RouteDirection {
   directionId: number;
   tripHeadsign: string;
+  /** Stops sequence for this direction */
+  stops?: RouteStopItem[];
+  /** Shape polyline coordinates for this direction */
+  shapes?: Array<[lat: number, lon: number]>;
 }
 
 export interface RouteScheduledDeparture {
@@ -142,6 +151,37 @@ export interface RouteDetailsResponse {
   timetable?: RouteTimetable | null;
 }
 
+// ── Origin-to-Destination Trip Calculation ───────────────────────────────────
+
+export interface TripPlanEstimate {
+  originStop: RouteStopItem;
+  destinationStop: RouteStopItem;
+  stopsCount: number;
+  estimatedDurationMinutes: number;
+  distanceMeters: number;
+  liveBusEtaMinutes: number | null;
+  nextScheduledDeparture: string | null;
+  nextScheduledArrival: string | null;
+  activeBusCount: number;
+}
+
+// ── GET /api/stops/:stopId/timetable ──────────────────────────────────────────
+
+export interface StopTimetableDeparture {
+  tripId: string;
+  routeId: string;
+  routeShortName: string;
+  tripHeadsign: string;
+  departureTime: string;
+  directionId: number;
+}
+
+export interface StopTimetableResponse {
+  stopId: string;
+  stopName: string;
+  departures: StopTimetableDeparture[];
+}
+
 // ── GET /api/routes/:routeId/vehicles ─────────────────────────────────────────
 
 export interface LiveVehicle {
@@ -153,6 +193,10 @@ export interface LiveVehicle {
   /** ISO 8601 timestamp from the GTFS-RT entity itself (not poller wall-clock). */
   timestamp: string;
   freshness: FreshnessStatus;
+  speedKmh?: number | null;
+  nearestStopId?: string | null;
+  nextStopId?: string | null;
+  directionId?: number | null;
 }
 
 export interface RouteVehiclesResponse {

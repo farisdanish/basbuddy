@@ -307,11 +307,80 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.status).toBe(200);
       expect(res.body.routeId).toBe('753');
       expect(res.body.routeShortName).toBe('753');
+      expect(res.body.directions[0].stops).toHaveLength(1);
+      expect(res.body.directions[0].shapes).toHaveLength(1);
       expect(res.body.timetable).not.toBeNull();
       expect(res.body.timetable.firstBusTime).toBe('06:30:00');
       expect(res.body.timetable.lastBusTime).toBe('23:00:00');
       expect(res.body.timetable.totalTripsToday).toBe(2);
       expect(res.body.timetable.allDepartures).toHaveLength(2);
+    });
+
+    it('GET /api/routes/:routeId/timetable returns full timetable departures for a route', async () => {
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            trip_id: 'trip_1',
+            direction_id: 0,
+            trip_headsign: 'UiTM Puncak Alam',
+            departure_time: '06:20:00',
+            arrival_time: '06:20:00',
+            stop_sequence: 1,
+            stop_id: 'SA786',
+            stop_name: 'Hentian Bandar Seksyen 14',
+          },
+          {
+            trip_id: 'trip_2',
+            direction_id: 0,
+            trip_headsign: 'UiTM Puncak Alam',
+            departure_time: '08:00:00',
+            arrival_time: '08:00:00',
+            stop_sequence: 1,
+            stop_id: 'SA786',
+            stop_name: 'Hentian Bandar Seksyen 14',
+          },
+        ],
+        rowCount: 2,
+      });
+
+      const res = await request(app).get('/api/routes/753/timetable?directionId=0');
+      expect(res.status).toBe(200);
+      expect(res.body.firstBusTime).toBe('06:20:00');
+      expect(res.body.lastBusTime).toBe('08:00:00');
+      expect(res.body.totalTripsToday).toBe(2);
+      expect(res.body.allDepartures).toHaveLength(2);
+    });
+  });
+
+  // ── 4b. GET /api/stops/:stopId/timetable ─────────────────────────────────────
+  describe('GET /api/stops/:stopId/timetable', () => {
+    it('returns full 24h timetable for a stop', async () => {
+      // 1. stop check
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ stop_id: 'SA1', stop_name: 'Kompleks PKNS' }],
+        rowCount: 1,
+      });
+      // 2. schedule query
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            trip_id: 'T1',
+            route_id: '753',
+            route_short_name: '753',
+            trip_headsign: 'UiTM',
+            departure_time: '06:45:00',
+            direction_id: 0,
+          },
+        ],
+        rowCount: 1,
+      });
+
+      const res = await request(app).get('/api/stops/SA1/timetable');
+      expect(res.status).toBe(200);
+      expect(res.body.stopId).toBe('SA1');
+      expect(res.body.stopName).toBe('Kompleks PKNS');
+      expect(res.body.departures).toHaveLength(1);
+      expect(res.body.departures[0].routeShortName).toBe('753');
     });
   });
 

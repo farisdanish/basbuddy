@@ -332,12 +332,26 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     await page.keyboard.press('Escape');
 
     // Open timetable right pane
-    const timetableBtn = routeInspector.getByRole('button', { name: 'Timetable' });
+    const timetableBtn = routeInspector.getByRole('button', { name: /Timetable/i });
     await timetableBtn.click();
     const timetableDialog = page.getByRole('dialog');
     await expect(timetableDialog).toBeVisible({ timeout: 5000 });
-    await expect(timetableDialog).toContainText('Scheduled Timetable');
+    await expect(timetableDialog).toContainText(/Timetable/i);
     await expect(timetableDialog).toContainText('750');
+
+    // Verify Stop Timeline tab & stops
+    await expect(timetableDialog.getByRole('button', { name: /Stop Timeline & ETAs/i })).toBeVisible();
+    await expect(timetableDialog).toContainText('Pasar Seni Platform B');
+
+    // Switch to Daily Schedule tab
+    const scheduleTabBtn = timetableDialog.getByRole('button', { name: /Daily Schedule/i });
+    await scheduleTabBtn.click();
+    await expect(timetableDialog).toContainText(/Morning|Afternoon|Evening|First Bus/i);
+
+    // Switch to Trip Calculator tab
+    const calcTabBtn = timetableDialog.getByRole('button', { name: /Trip Calc/i });
+    await calcTabBtn.click();
+    await expect(timetableDialog).toContainText(/Trip & ETA Calculator/i);
 
     // Close timetable pane
     const closeTimetableBtn = timetableDialog.getByRole('button', { name: 'Close timetable' });
@@ -377,13 +391,13 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     await expect(stopPill).toBeVisible();
 
     // Open timetable on mobile
-    const timetableBtn = routeInspector.getByRole('button', { name: 'Timetable' });
+    const timetableBtn = routeInspector.getByRole('button', { name: /Timetable/i });
     await timetableBtn.click();
 
     // Verify timetable modal is visible with scheduled departures
     const timetableDialog = page.getByRole('dialog');
     await expect(timetableDialog).toBeVisible({ timeout: 5000 });
-    await expect(timetableDialog).toContainText('Scheduled Timetable');
+    await expect(timetableDialog).toContainText(/Timetable/i);
 
     // Close timetable via close button
     const closeTimetableBtn = timetableDialog.getByRole('button', { name: 'Close timetable' });
