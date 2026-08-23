@@ -46,11 +46,108 @@ function nowInKL(): { dayOfWeek: DayName; secondsSinceMidnight: number } {
 }
 
 // ── GET /api/routes ────────────────────────────────────────────────────────────
-// Returns all routes from Postgres (static data) along with active live bus counts from Valkey.
+// Returns routes from Postgres (static data) along with active live bus counts from Valkey.
+// Supports optional ?near=lat,lon&radiusMeters=25000&limit=20 for proximity sorting.
 routesRouter.get('/routes', async (req, res) => {
   const pool = req.app.locals['pool'] as Pool;
   const valkey = req.app.locals['valkey'] as Redis | undefined;
+  const { near, radiusMeters: radiusStr, limit: limitStr } = req.query;
+
   try {
+    if (near && typeof near === 'string') {
+      const parts = near.split(',');
+      const lat = parseFloat(parts[0] ?? '');
+      const lon = parseFloat(parts[1] ?? '');
+      if (isNaN(lat) || isNaN(lon)) {
+        res.status(400).json({ error: 'invalid_near_param', message: 'Expected ?near=lat,lon as decimals' });
+        return;
+      }
+
+      const radiusMeters = Math.min(parseFloat(String(radiusStr ?? '25000')), 50000);
+      const limit = Math.min(parseInt(String(limitStr ?? '20'), 10), 50);
+
+      // Bounding box approximation
+      const latDelta = radiusMeters / 111_000;
+      const lonDelta = radiusMeters / (111_000 * Math.cos((lat * Math.PI) / 180));
+      const minLat = lat - latDelta;
+      const maxLat = lat + latDelta;
+      const minLon = lon - lonDelta;
+      const maxLon = lon + lonDelta;
+
+      const result = await pool.query<{
+        route_id: string;
+        route_short_name: string;
+        route_long_name: string;
+        route_color: string;
+        distance_meters: number;
+      }>(
+        `SELECT r.route_id, r.route_short_name, r.route_long_name, r.route_color,
+                ROUND(MIN(
+                  6371000 * acos(
+                    LEAST(1.0, GREATEST(-1.0,
+                      cos(radians($1)) * cos(radians(s.stop_lat)) *
+                      cos(radians(s.stop_lon) - radians($2)) +
+                      sin(radians($1)) * sin(radians(s.stop_lat))
+                    ))
+                  )
+                )) AS distance_meters
+         FROM routes r
+         JOIN trips t ON t.route_id = r.route_id
+         JOIN stop_times st ON st.trip_id = t.trip_id
+         JOIN stops s ON s.stop_id = st.stop_id
+         WHERE s.stop_lat BETWEEN $3 AND $4
+           AND s.stop_lon BETWEEN $5 AND $6
+         GROUP BY r.route_id, r.route_short_name, r.route_long_name, r.route_color
+         HAVING MIN(
+                  6371000 * acos(
+                    LEAST(1.0, GREATEST(-1.0,
+                      cos(radians($1)) * cos(radians(s.stop_lat)) *
+                      cos(radians(s.stop_lon) - radians($2)) +
+                      sin(radians($1)) * sin(radians(s.stop_lat))
+                    ))
+                  )
+                ) <= $7
+         ORDER BY distance_meters ASC
+         LIMIT $8`,
+        [lat, lon, minLat, maxLat, minLon, maxLon, radiusMeters, limit]
+      );
+
+      const liveCounts: Record<string, number> = {};
+      if (valkey && result.rows.length > 0 && typeof valkey.pipeline === 'function') {
+        try {
+          const pipeline = valkey.pipeline();
+          for (const r of result.rows) {
+            pipeline.scard(VALKEY_KEYS.routeVehicles(r.route_id));
+          }
+          const counts = await pipeline.exec();
+          if (counts) {
+            counts.forEach(([err, count], idx) => {
+              if (!err && typeof count === 'number') {
+                const routeId = result.rows[idx]!.route_id;
+                liveCounts[routeId] = count;
+              }
+            });
+          }
+        } catch (cacheErr) {
+          console.warn('[api/routes] Valkey live count lookup warning:', cacheErr);
+        }
+      }
+
+      const response: RoutesResponse = {
+        routes: result.rows.map((r) => ({
+          routeId: r.route_id,
+          routeShortName: r.route_short_name,
+          routeLongName: r.route_long_name,
+          routeColor: r.route_color,
+          liveBusCount: liveCounts[r.route_id] ?? 0,
+          distanceMeters: Number(r.distance_meters),
+        })),
+      };
+      res.json(response);
+      return;
+    }
+
+    // Standard unscoped GET /api/routes
     const result = await pool.query<{
       route_id: string;
       route_short_name: string;

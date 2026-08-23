@@ -8,6 +8,13 @@ interface SearchOverlayProps {
   onClose: () => void;
   onSelectStop: (stopId: string) => void;
   onSelectRoute: (routeId: string) => void;
+  userLocation?: { lat: number; lon: number } | [number, number] | null;
+}
+
+function formatDistance(meters?: number | null): string | null {
+  if (meters === undefined || meters === null || isNaN(meters)) return null;
+  if (meters < 1000) return `${Math.round(meters)}m`;
+  return `${(meters / 1000).toFixed(1)} km`;
 }
 
 export function SearchOverlay({
@@ -15,12 +22,13 @@ export function SearchOverlay({
   onClose,
   onSelectStop,
   onSelectRoute,
+  userLocation,
 }: SearchOverlayProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<SearchCategory>('all');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { stops, routes, loading } = useSearch(query, category);
+  const { stops, routes, loading, isNearby } = useSearch(query, category, userLocation);
 
   useEffect(() => {
     if (isOpen) {
@@ -103,50 +111,25 @@ export function SearchOverlay({
           </div>
         )}
 
-        {/* Stops Section */}
-        {stops.length > 0 && (
-          <div>
-            <h3 className="text-xs font-mono uppercase tracking-wider text-[#FFF8EE]/50 mb-2">
-              Bus Stops ({stops.length})
-            </h3>
-            <div className="space-y-1.5">
-              {stops.map((stop) => (
-                <button
-                  key={stop.stopId}
-                  type="button"
-                  onClick={() => {
-                    onSelectStop(stop.stopId);
-                    onClose();
-                  }}
-                  className="w-full flex items-center gap-3.5 p-3 rounded-xl bg-[#182337]/60 hover:bg-[#182337] active:scale-[0.99] border border-white/5 text-left transition-all group"
-                >
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1F7A6C]/30 border border-[#1F7A6C]/40 text-[#1F7A6C] shrink-0 group-hover:scale-105 transition-transform">
-                    <MapPin className="w-4 h-4 text-[#1F7A6C]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-sans font-medium text-[#FFF8EE] truncate">
-                      {stop.stopName}
-                    </div>
-                    <div className="text-xs font-mono text-[#FFF8EE]/40">
-                      Stop {stop.stopId}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Routes Section */}
+        {/* Routes Section (shown first when proximity routes are available) */}
         {routes.length > 0 && (
           <div>
-            <h3 className="text-xs font-mono uppercase tracking-wider text-[#FFF8EE]/50 mb-2">
-              Routes ({routes.length})
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-[#FFF8EE]/60 flex items-center gap-1.5">
+                <span>
+                  {!query
+                    ? isNearby
+                      ? '📍 Routes Near You (Within 25 km)'
+                      : '🚌 Popular & Active Routes'
+                    : `Routes (${routes.length})`}
+                </span>
+              </h3>
+            </div>
             <div className="space-y-1.5">
               {routes.map((route) => {
                 const badge = getServiceBadge(route.routeShortName);
                 const hasLiveVehicles = route.liveBusCount !== undefined && route.liveBusCount > 0;
+                const distanceStr = formatDistance(route.distanceMeters);
                 return (
                   <button
                     key={route.routeId}
@@ -172,6 +155,12 @@ export function SearchOverlay({
                           >
                             {badge.label}
                           </span>
+                          {distanceStr && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1F7A6C]/20 text-[#2dd4bf] border border-[#1F7A6C]/40 shrink-0 font-medium">
+                              <MapPin className="w-2.5 h-2.5" />
+                              <span>{distanceStr}</span>
+                            </span>
+                          )}
                           {hasLiveVehicles ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0 shadow-sm">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -192,6 +181,54 @@ export function SearchOverlay({
                             ? `${route.liveBusCount} ${route.liveBusCount === 1 ? 'bus' : 'buses'} tracking now`
                             : 'Timetable only'}
                         </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Stops Section */}
+        {stops.length > 0 && (
+          <div>
+            <h3 className="text-xs font-mono uppercase tracking-wider text-[#FFF8EE]/50 mb-2">
+              {!query
+                ? isNearby
+                  ? '🚏 Bus Stops Near You'
+                  : 'Bus Stops'
+                : `Bus Stops (${stops.length})`}
+            </h3>
+            <div className="space-y-1.5">
+              {stops.map((stop) => {
+                const distanceStr = formatDistance(stop.distanceMeters);
+                return (
+                  <button
+                    key={stop.stopId}
+                    type="button"
+                    onClick={() => {
+                      onSelectStop(stop.stopId);
+                      onClose();
+                    }}
+                    className="w-full flex items-center gap-3.5 p-3 rounded-xl bg-[#182337]/60 hover:bg-[#182337] active:scale-[0.99] border border-white/5 text-left transition-all group"
+                  >
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1F7A6C]/30 border border-[#1F7A6C]/40 text-[#1F7A6C] shrink-0 group-hover:scale-105 transition-transform">
+                      <MapPin className="w-4 h-4 text-[#1F7A6C]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-sans font-medium text-[#FFF8EE] truncate">
+                          {stop.stopName}
+                        </div>
+                        {distanceStr && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#1F7A6C]/20 text-[#2dd4bf] border border-[#1F7A6C]/40 shrink-0 font-medium">
+                            {distanceStr} away
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs font-mono text-[#FFF8EE]/40">
+                        Stop {stop.stopId}
                       </div>
                     </div>
                   </button>

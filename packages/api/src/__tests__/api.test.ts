@@ -289,6 +289,32 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.routes[1].liveBusCount).toBe(0);
     });
 
+    it('returns nearby routes sorted by distanceMeters when ?near is provided', async () => {
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          { route_id: '753', route_short_name: '753', route_long_name: 'Shah Alam', route_color: 'FF0000', distance_meters: 450 },
+          { route_id: '754', route_short_name: '754', route_long_name: 'Klang', route_color: '00FF00', distance_meters: 1800 },
+        ],
+        rowCount: 2,
+      });
+
+      mockValkey.setStore.set(VALKEY_KEYS.routeVehicles('753'), new Set(['VEH_1']));
+
+      const res = await request(app).get('/api/routes?near=3.14,101.69&radiusMeters=25000');
+      expect(res.status).toBe(200);
+      expect(res.body.routes).toHaveLength(2);
+      expect(res.body.routes[0].routeId).toBe('753');
+      expect(res.body.routes[0].distanceMeters).toBe(450);
+      expect(res.body.routes[0].liveBusCount).toBe(1);
+      expect(res.body.routes[1].distanceMeters).toBe(1800);
+    });
+
+    it('returns 400 for invalid ?near parameter in /api/routes', async () => {
+      const res = await request(app).get('/api/routes?near=invalid,coordinates');
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('invalid_near_param');
+    });
+
     it('GET /api/routes/:routeId returns RouteDetailsResponse with timetable', async () => {
       // 1. route basic info
       mockPool.query.mockResolvedValueOnce({

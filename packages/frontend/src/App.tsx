@@ -167,6 +167,7 @@ export default function App() {
         onClose={() => setSearchOpen(false)}
         onSelectStop={handleSelectStop}
         onSelectRoute={handleSelectRoute}
+        userLocation={position}
       />
 
       {/* ── Bottom Favourites Tray ──────────────────────────────────────────── */}

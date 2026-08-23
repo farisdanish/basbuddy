@@ -98,6 +98,8 @@ export interface RouteListItem {
   routeColor: string;
   /** Number of active live GPS vehicles tracking on this route */
   liveBusCount?: number;
+  /** Distance in meters from the requested near coordinates to the closest stop on this route */
+  distanceMeters?: number;
 }
 
 export interface RoutesResponse {
