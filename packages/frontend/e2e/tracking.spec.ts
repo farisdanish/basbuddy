@@ -329,6 +329,19 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     // Dismiss stop sheet
     await page.keyboard.press('Escape');
 
+    // Open timetable right pane
+    const timetableBtn = routeInspector.getByRole('button', { name: 'Timetable' });
+    await timetableBtn.click();
+    const timetableDialog = page.getByRole('dialog');
+    await expect(timetableDialog).toBeVisible({ timeout: 5000 });
+    await expect(timetableDialog).toContainText('Scheduled Timetable');
+    await expect(timetableDialog).toContainText('750');
+
+    // Close timetable pane
+    const closeTimetableBtn = timetableDialog.getByRole('button', { name: 'Close timetable' });
+    await closeTimetableBtn.click();
+    await expect(timetableDialog).not.toBeVisible();
+
     // Close route inspector
     const closeBtn = page.getByRole('button', { name: 'Close route inspector' });
     await closeBtn.click({ force: true });

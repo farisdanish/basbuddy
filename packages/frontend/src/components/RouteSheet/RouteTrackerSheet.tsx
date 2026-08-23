@@ -62,7 +62,7 @@ export function RouteTrackerSheet({
       <aside
         aria-label="Route inspector"
         data-testid="route-inspector"
-        className="absolute top-20 left-4 right-4 z-30 max-w-md mx-auto md:left-6 md:right-auto md:top-20 md:w-96 md:max-w-none md:mx-0 md:max-h-[calc(100vh-6.5rem)] flex flex-col rounded-2xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden transition-all"
+        className="absolute top-20 left-4 right-4 z-30 max-w-md mx-auto md:left-6 md:right-auto md:top-20 md:w-96 md:max-w-none md:mx-0 max-h-[calc(100vh-13rem)] md:max-h-[calc(100vh-12rem)] flex flex-col rounded-2xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden transition-all"
       >
         {/* Route Header */}
         <div className="flex items-center justify-between gap-3 p-4 border-b border-white/10 shrink-0">
