@@ -1,0 +1,280 @@
+import { useState, useEffect } from 'react';
+import { X, Info, HelpCircle, MessageSquare, ExternalLink, ShieldCheck, Github, Radio, Clock, Heart } from 'lucide-react';
+
+export type InfoTabType = 'about' | 'faq' | 'feedback';
+
+interface InfoModalProps {
+  isOpen: boolean;
+  initialTab?: InfoTabType;
+  onClose: () => void;
+}
+
+export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalProps) {
+  const [activeTab, setActiveTab] = useState<InfoTabType>(initialTab);
+
+  // Sync tab when opened with a specific initialTab
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
+  // Handle ESC key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="info-modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+    >
+      <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-3xl bg-[#182337] border border-white/15 shadow-2xl overflow-hidden text-[#FFF8EE] animate-in zoom-in-95 duration-200">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 bg-[#101B2D]/90 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-[#F4A100]/20 border border-[#F4A100]/40 text-[#F4A100] font-display text-xl font-bold shadow-sm shrink-0 select-none">
+              BB
+            </div>
+            <div>
+              <h2 id="info-modal-title" className="text-base font-sans font-bold text-[#FFF8EE] leading-tight">
+                BasBuddy Info & Support
+              </h2>
+              <p className="text-xs font-mono text-[#FFF8EE]/50">
+                Klang Valley RapidKL Transit Companion
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close information modal"
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#FFF8EE]/80 hover:text-[#FFF8EE] active:scale-95 transition-all shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Tab Navigation Switcher */}
+        <div className="flex items-center border-b border-white/10 bg-white/[0.02] p-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('about')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-sans font-semibold transition-all ${
+              activeTab === 'about'
+                ? 'bg-[#1F7A6C] text-[#FFF8EE] shadow-sm'
+                : 'text-[#FFF8EE]/60 hover:text-[#FFF8EE] hover:bg-white/5'
+            }`}
+          >
+            <Info className="w-3.5 h-3.5" />
+            <span>About</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('faq')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-sans font-semibold transition-all ${
+              activeTab === 'faq'
+                ? 'bg-[#1F7A6C] text-[#FFF8EE] shadow-sm'
+                : 'text-[#FFF8EE]/60 hover:text-[#FFF8EE] hover:bg-white/5'
+            }`}
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>FAQ</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('feedback')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-sans font-semibold transition-all ${
+              activeTab === 'feedback'
+                ? 'bg-[#1F7A6C] text-[#FFF8EE] shadow-sm'
+                : 'text-[#FFF8EE]/60 hover:text-[#FFF8EE] hover:bg-white/5'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Feedback</span>
+          </button>
+        </div>
+
+        {/* Tab Content Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 basbuddy-scroll text-xs font-sans leading-relaxed text-[#FFF8EE]/80">
+          {/* ── ABOUT TAB ────────────────────────────────────────────────────── */}
+          {activeTab === 'about' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#F4A100]">
+                  <ShieldCheck className="w-4 h-4 text-[#F4A100]" />
+                  <span>Independent & Open Source</span>
+                </div>
+                <p>
+                  <strong>BasBuddy</strong> is an unofficial, high-performance RapidKL bus tracking service and PWA designed to give commuters in the Klang Valley transparent, instant access to bus schedules, arrival countdowns, and live GPS positions.
+                </p>
+              </div>
+
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-mono uppercase tracking-wider text-[#F4A100]">
+                  Key Features
+                </h3>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                  <li className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-2">
+                    <Radio className="w-3.5 h-3.5 text-[#E94B8C] shrink-0 mt-0.5" />
+                    <span><strong>Live GPS Map:</strong> Real-time bus tracking with directional bearing on road shapes.</span>
+                  </li>
+                  <li className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-2">
+                    <Clock className="w-3.5 h-3.5 text-[#F4A100] shrink-0 mt-0.5" />
+                    <span><strong>Instant ETAs:</strong> High-speed arrival predictions computed from vehicle telemetry.</span>
+                  </li>
+                  <li className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-2">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong>Transparent Freshness:</strong> Clearly distinguishes live GPS from timetable schedules.</span>
+                  </li>
+                  <li className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-2">
+                    <Heart className="w-3.5 h-3.5 text-[#FF5A47] shrink-0 mt-0.5" />
+                    <span><strong>Favorites Tray:</strong> One-tap access to your frequent bus stops and routes.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-[#101B2D] border border-white/10 space-y-1.5 text-[11px] text-[#FFF8EE]/60">
+                <div className="font-bold text-[#FFF8EE] flex items-center justify-between">
+                  <span>Open Data Attribution</span>
+                  <span className="text-[10px] font-mono text-[#F4A100]">CC BY 4.0</span>
+                </div>
+                <p>
+                  Transit schedules, route geometries, and realtime protobuf feeds are powered by open data published by <strong>Prasarana Malaysia Berhad</strong> on <a className="text-[#F4A100] underline" href="https://data.gov.my" target="_blank" rel="noopener noreferrer">data.gov.my</a>.
+                </p>
+                <p className="text-[10px] text-[#FFF8EE]/40">
+                  BasBuddy is not affiliated with, endorsed by, or connected to Prasarana or RapidKL.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── FAQ TAB ──────────────────────────────────────────────────────── */}
+          {activeTab === 'faq' && (
+            <div className="space-y-3 animate-in fade-in duration-150">
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
+                <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
+                  Why does a route show &quot;No live GPS telemetry in open feed&quot;?
+                </h4>
+                <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
+                  Prasarana&apos;s public open feed only broadcasts telemetry for buses with active on-board GPS hardware transmitting at that moment. When buses are between departure intervals or in depot, BasBuddy automatically shows the published timetable schedule so you still know when the next bus departs.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
+                <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
+                  Why are there no bus license plate numbers?
+                </h4>
+                <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
+                  Public road registration plates (e.g. <code>WXX 1234</code>) are omitted by Prasarana in the open dataset. BasBuddy maps the active Trip ID and Route ID directly to destination headsigns, line numbers, and arrival countdowns.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
+                <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
+                  How accurate are the arrival ETAs?
+                </h4>
+                <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
+                  When marked with a pulsing pink <strong>Live</strong> badge, arrival times are calculated by snapping GPS coordinates to road polyline shapes and measuring progress. When marked <strong>Schedule estimate</strong>, times are based on the published timetable.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
+                <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
+                  Can I install BasBuddy on my phone?
+                </h4>
+                <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
+                  Yes! BasBuddy is a Progressive Web App (PWA). In Chrome or Safari, tap <em>Share</em> or menu (⋮) and select <strong>&quot;Add to Home Screen&quot;</strong> for a standalone app experience.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── FEEDBACK TAB ─────────────────────────────────────────────────── */}
+          {activeTab === 'feedback' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <div className="p-4 rounded-2xl bg-[#101B2D] border border-white/10 space-y-2 text-center">
+                <MessageSquare className="w-8 h-8 text-[#F4A100] mx-auto" />
+                <h4 className="font-bold text-sm text-[#FFF8EE]">We&apos;d love your feedback!</h4>
+                <p className="text-[11px] text-[#FFF8EE]/70 max-w-sm mx-auto">
+                  Have a suggestion, noticed a route discrepancy, or want to report a bug? Community feedback helps make BasBuddy better for all Klang Valley commuters.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <a
+                  href="https://github.com/farisdanish/basbuddy/issues"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 hover:bg-[#1F7A6C]/30 hover:border-[#1F7A6C]/50 border border-white/10 transition-all active:scale-[0.99] group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Github className="w-5 h-5 text-[#FFF8EE] group-hover:text-[#F4A100] transition-colors" />
+                    <div>
+                      <div className="font-bold text-[#FFF8EE] group-hover:text-[#F4A100] transition-colors">
+                        Submit an Issue / Feature Request
+                      </div>
+                      <div className="text-[10px] text-[#FFF8EE]/50">
+                        Open a ticket on GitHub
+                      </div>
+                    </div>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-[#FFF8EE]/40 group-hover:text-[#FFF8EE]" />
+                </a>
+
+                <a
+                  href="mailto:farisdanish.antoni@gmail.com?subject=BasBuddy%20Feedback"
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 hover:bg-[#1F7A6C]/30 hover:border-[#1F7A6C]/50 border border-white/10 transition-all active:scale-[0.99] group"
+                >
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="w-5 h-5 text-[#F4A100]" />
+                    <div>
+                      <div className="font-bold text-[#FFF8EE] group-hover:text-[#F4A100] transition-colors">
+                        Send Direct Feedback via Email
+                      </div>
+                      <div className="text-[10px] text-[#FFF8EE]/50">
+                        farisdanish.antoni@gmail.com
+                      </div>
+                    </div>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-[#FFF8EE]/40 group-hover:text-[#FFF8EE]" />
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-3 sm:px-5 sm:py-3 border-t border-white/10 bg-[#101B2D]/60 flex items-center justify-between text-[11px] text-[#FFF8EE]/50 shrink-0">
+          <span>BasBuddy v1.0 · Unofficial</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#FFF8EE] font-semibold transition-all active:scale-95"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

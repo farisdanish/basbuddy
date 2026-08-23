@@ -154,4 +154,43 @@ test.describe('Frontend Shell (M5)', () => {
     const faviconRes = await request.get('/favicon.ico');
     expect(faviconRes.status()).toBe(200);
   });
+
+  test('opens Info, FAQ, and Feedback modal from header and footer hyperlinks', async ({ page }) => {
+    await page.goto('/');
+
+    // 1. Open info modal from header button
+    const infoButton = page.getByRole('button', { name: /About, FAQ and Feedback/i });
+    await expect(infoButton).toBeVisible();
+    await infoButton.click();
+
+    // Verify modal is visible with About content
+    const infoModal = page.getByRole('dialog', { name: /BasBuddy Info & Support/i });
+    await expect(infoModal).toBeVisible();
+    await expect(infoModal).toContainText('Independent & Open Source');
+
+    // Switch to FAQ tab
+    const faqTab = infoModal.getByRole('button', { name: 'FAQ' });
+    await faqTab.click();
+    await expect(infoModal).toContainText('Why does a route show "No live GPS telemetry in open feed"?');
+
+    // Switch to Feedback tab
+    const feedbackTab = infoModal.getByRole('button', { name: 'Feedback' });
+    await feedbackTab.click();
+    await expect(infoModal).toContainText('Submit an Issue / Feature Request');
+
+    // Close modal via close button
+    const closeBtn = infoModal.getByRole('button', { name: 'Close information modal' });
+    await closeBtn.click();
+    await expect(infoModal).not.toBeVisible();
+
+    // 2. Open directly to FAQ via footer hyperlink
+    const footerFaq = page.getByRole('button', { name: 'FAQ', exact: true });
+    await footerFaq.click();
+    await expect(infoModal).toBeVisible();
+    await expect(infoModal).toContainText('Why are there no bus license plate numbers?');
+
+    // Close via Escape key
+    await page.keyboard.press('Escape');
+    await expect(infoModal).not.toBeVisible();
+  });
 });

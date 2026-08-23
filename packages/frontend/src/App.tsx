@@ -18,6 +18,7 @@ import { RouteTrackerSheet } from './components/RouteSheet/RouteTrackerSheet.tsx
 
 import { StopSheet } from './components/StopSheet/StopSheet.tsx';
 import { FavoritesList } from './components/FavoritesList/FavoritesList.tsx';
+import { InfoModal, type InfoTabType } from './components/Info/InfoModal.tsx';
 
 // ── Time-of-day gradient (§11 signature element) ──────────────────────────────
 function getTimeGradientClass(hour: number): string {
@@ -83,6 +84,7 @@ export default function App() {
   });
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [infoModalTab, setInfoModalTab] = useState<InfoTabType | null>(null);
 
   const { stops } = useNearbyStops(mapCenter[0], mapCenter[1]);
   const { data: routeData, loading: routeLoading } = useRouteDetails(selectedRouteId);
@@ -141,6 +143,7 @@ export default function App() {
       {/* ── Top Floating Search & System Status ─────────────────────────────── */}
       <SearchHeader
         onOpenSearch={() => setSearchOpen(true)}
+        onOpenInfo={() => setInfoModalTab('about')}
         systemStatus={health.status}
       />
 
@@ -183,11 +186,42 @@ export default function App() {
         onSelectRoute={handleSelectRoute}
       />
 
-      {/* ── CC BY 4.0 Attribution Footer ────────────────────────────────────── */}
-      <footer className="absolute bottom-1 left-2 z-20 text-[10px] font-sans text-[#FFF8EE]/40 pointer-events-none select-none">
-        Data: <a className="pointer-events-auto underline" href="https://data.gov.my" target="_blank" rel="noopener noreferrer">data.gov.my</a> / Prasarana ·{' '}
-        <a className="pointer-events-auto underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> ·{' '}
-        Unofficial
+      {/* ── Info / FAQ / Feedback Modal Dialog ──────────────────────────────── */}
+      <InfoModal
+        isOpen={infoModalTab !== null}
+        initialTab={infoModalTab ?? 'about'}
+        onClose={() => setInfoModalTab(null)}
+      />
+
+      {/* ── CC BY 4.0 Attribution & Footer Links ────────────────────────────── */}
+      <footer className="absolute bottom-1 left-2 z-20 text-[10px] font-sans text-[#FFF8EE]/40 pointer-events-none select-none flex items-center gap-1.5 flex-wrap">
+        <span>Data: <a className="pointer-events-auto underline hover:text-[#FFF8EE]" href="https://data.gov.my" target="_blank" rel="noopener noreferrer">data.gov.my</a> / Prasarana ·{' '}
+        <a className="pointer-events-auto underline hover:text-[#FFF8EE]" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> ·{' '}
+        Unofficial</span>
+        <span>·</span>
+        <button
+          type="button"
+          onClick={() => setInfoModalTab('about')}
+          className="pointer-events-auto underline hover:text-[#F4A100] transition-colors"
+        >
+          About
+        </button>
+        <span>·</span>
+        <button
+          type="button"
+          onClick={() => setInfoModalTab('faq')}
+          className="pointer-events-auto underline hover:text-[#F4A100] transition-colors"
+        >
+          FAQ
+        </button>
+        <span>·</span>
+        <button
+          type="button"
+          onClick={() => setInfoModalTab('feedback')}
+          className="pointer-events-auto underline hover:text-[#F4A100] transition-colors"
+        >
+          Feedback
+        </button>
       </footer>
     </div>
   );
