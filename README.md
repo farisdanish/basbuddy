@@ -68,8 +68,8 @@ BasBuddy strictly mirrors the official open data stream from [`data.gov.my`](htt
                                │ (SET stop_etas, vehicle, route)           │
                                ▼                                           ▼
 ┌──────────────────┐   ┌───────────────┐                          ┌─────────────────┐
-│ packages/        │──▶│ Valkey /      │                          │ Postgres +      │
-│ frontend (React) │   │ Redis Cache   │                          │ PostGIS         │
+│ packages/        │──▶│ Valkey /      │                          │ PostgreSQL 16   │
+│ frontend (React) │   │ Redis Cache   │                          │ (Static Store)  │
 └────────┬─────────┘   └───────▲───────┘                          └────────┬────────┘
          │ (GET /api)          │                                           │
          ▼                     │ (Cache read)                              │ (Static fallback)
@@ -94,7 +94,7 @@ BasBuddy strictly mirrors the official open data stream from [`data.gov.my`](htt
 | Layer | Technology |
 |---|---|
 | **Backend & API** | Node.js 20, Express, TypeScript |
-| **Static Database** | PostgreSQL + PostGIS (spatial geometry indexing) |
+| **Static Database** | PostgreSQL 16 (B-tree coordinate indexing + Haversine) |
 | **Realtime Cache** | Valkey (Redis-compatible high-performance cache) |
 | **Telemetry Ingestion** | Protocol Buffers (`gtfs-realtime-bindings`), Streams |
 | **Frontend Framework** | React 18, Vite, TypeScript |
