@@ -7,9 +7,16 @@ const FALLBACK_DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{16,128}$/;
 
 /**
  * Middleware ensuring an incoming request has a valid `x-device-id` header.
+ * Skips preflight OPTIONS requests to allow clean CORS handshakes.
  * Attaches the validated ID to `res.locals.deviceId`.
  */
 export function requireDeviceId(req: Request, res: Response, next: NextFunction): void {
+  // Allow CORS preflight requests to pass through untouched
+  if (req.method === 'OPTIONS') {
+    next();
+    return;
+  }
+
   const headerValue = req.header(DEVICE_ID_HEADER) ?? req.header('x-device-id');
 
   if (!headerValue || typeof headerValue !== 'string' || !headerValue.trim()) {

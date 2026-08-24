@@ -29,7 +29,13 @@ export function createApp(options: AppOptions): Express {
   const app = express();
 
   app.use(compression());
-  app.use(cors({ origin: origins, methods: ['GET', 'POST', 'DELETE'] }));
+  app.use(
+    cors({
+      origin: origins,
+      methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'x-device-id', 'X-Device-Id', 'Authorization'],
+    }),
+  );
   app.use(express.json());
 
   // Attach shared dependencies so route handlers can access them
