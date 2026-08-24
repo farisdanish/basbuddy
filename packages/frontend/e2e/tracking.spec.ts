@@ -15,16 +15,19 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
       });
     });
 
-    // Stateful mock favorites store
-    let mockFavorites: Array<{ id: number; stopId: string; routeId: string | null; label: string; createdAt: string }> = [];
+    // Stateful mock favorites store per device
+    const mockFavoritesByDevice = new Map<string, Array<{ id: number; stopId: string; routeId: string | null; label: string; createdAt: string }>>();
 
     await page.route('**/api/favorites**', async (route) => {
       const method = route.request().method();
+      const deviceId = route.request().headers()['x-device-id'] || 'default-device';
+      const currentFavs = mockFavoritesByDevice.get(deviceId) ?? [];
+
       if (method === 'GET') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ favorites: mockFavorites }),
+          body: JSON.stringify({ favorites: currentFavs }),
         });
       } else if (method === 'POST') {
         const body = (route.request().postDataJSON() ?? {}) as { stopId: string; routeId?: string; label?: string };
@@ -35,14 +38,15 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
           label: body.label ?? body.stopId,
           createdAt: new Date().toISOString(),
         };
-        mockFavorites = [newFav, ...mockFavorites];
+        const updated = [newFav, ...currentFavs];
+        mockFavoritesByDevice.set(deviceId, updated);
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
           body: JSON.stringify(newFav),
         });
       } else if (method === 'DELETE') {
-        mockFavorites = [];
+        mockFavoritesByDevice.set(deviceId, []);
         await route.fulfill({ status: 204 });
       } else {
         await route.fulfill({ status: 200 });
@@ -507,5 +511,27 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     const closeBtn = page.getByRole('button', { name: 'Close route inspector' });
     await closeBtn.click({ force: true });
     await expect(routeInspector).not.toBeVisible();
+  });
+
+  test('generates persistent device ID and attaches x-device-id header on requests', async ({ page }) => {
+    let capturedDeviceIdHeader: string | null = null;
+    await page.route('**/api/favorites**', async (route) => {
+      capturedDeviceIdHeader = route.request().headers()['x-device-id'] ?? null;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ favorites: [] }),
+      });
+    });
+
+    await page.goto('/');
+
+    // Check localStorage has device ID generated
+    const storedDeviceId = await page.evaluate(() => localStorage.getItem('basbuddy_device_id'));
+    expect(storedDeviceId).toBeTruthy();
+    expect(storedDeviceId!.length).toBeGreaterThanOrEqual(16);
+
+    // Verify header was passed
+    expect(capturedDeviceIdHeader).toBe(storedDeviceId);
   });
 });

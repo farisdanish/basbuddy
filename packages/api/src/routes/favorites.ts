@@ -5,17 +5,32 @@ import type {
   CreateFavoriteBody,
   Favorite,
 } from '@basbuddy/shared';
+import { requireDeviceId } from '../middleware/requireDeviceId.js';
 
 export const favoritesRouter = Router();
 
+// Enforce device scoping for all favorites endpoints
+favoritesRouter.use('/favorites', requireDeviceId);
+
 // ── GET /api/favorites ────────────────────────────────────────────────────────
-favoritesRouter.get('/favorites', async (req, res) => {
-  const pool = req.app.locals['pool'] as Pool;
+favoritesRouter.get('/favorites', async (_req, res) => {
+  const pool = res.app.locals['pool'] as Pool;
+  const deviceId = res.locals['deviceId'] as string;
+
   try {
     const result = await pool.query<{
-      id: number; stop_id: string | null; route_id: string | null;
-      label: string | null; created_at: string;
-    }>('SELECT id, stop_id, route_id, label, created_at FROM favorites ORDER BY created_at DESC');
+      id: number;
+      stop_id: string | null;
+      route_id: string | null;
+      label: string | null;
+      created_at: string;
+    }>(
+      `SELECT id, stop_id, route_id, label, created_at
+       FROM favorites
+       WHERE device_id = $1
+       ORDER BY created_at DESC`,
+      [deviceId],
+    );
 
     const response: FavoritesResponse = {
       favorites: result.rows.map((r) => ({
@@ -35,7 +50,8 @@ favoritesRouter.get('/favorites', async (req, res) => {
 
 // ── POST /api/favorites ───────────────────────────────────────────────────────
 favoritesRouter.post('/favorites', async (req, res) => {
-  const pool = req.app.locals['pool'] as Pool;
+  const pool = res.app.locals['pool'] as Pool;
+  const deviceId = res.locals['deviceId'] as string;
   const body = req.body as CreateFavoriteBody;
 
   if (!body?.stopId && !body?.routeId) {
@@ -45,13 +61,16 @@ favoritesRouter.post('/favorites', async (req, res) => {
 
   try {
     const result = await pool.query<{
-      id: number; stop_id: string | null; route_id: string | null;
-      label: string | null; created_at: string;
+      id: number;
+      stop_id: string | null;
+      route_id: string | null;
+      label: string | null;
+      created_at: string;
     }>(
-      `INSERT INTO favorites (stop_id, route_id, label)
-       VALUES ($1, $2, $3)
+      `INSERT INTO favorites (stop_id, route_id, label, device_id)
+       VALUES ($1, $2, $3, $4)
        RETURNING id, stop_id, route_id, label, created_at`,
-      [body.stopId ?? null, body.routeId ?? null, body.label ?? null],
+      [body.stopId ?? null, body.routeId ?? null, body.label ?? null, deviceId],
     );
 
     const row = result.rows[0]!;
@@ -76,7 +95,8 @@ favoritesRouter.post('/favorites', async (req, res) => {
 
 // ── DELETE /api/favorites/:id ─────────────────────────────────────────────────
 favoritesRouter.delete('/favorites/:id', async (req, res) => {
-  const pool = req.app.locals['pool'] as Pool;
+  const pool = res.app.locals['pool'] as Pool;
+  const deviceId = res.locals['deviceId'] as string;
   const id = parseInt(req.params['id'] ?? '', 10);
 
   if (isNaN(id)) {
@@ -85,8 +105,12 @@ favoritesRouter.delete('/favorites/:id', async (req, res) => {
   }
 
   try {
-    const result = await pool.query('DELETE FROM favorites WHERE id = $1', [id]);
+    const result = await pool.query(
+      'DELETE FROM favorites WHERE id = $1 AND device_id = $2',
+      [id, deviceId],
+    );
     if (result.rowCount === 0) {
+      // Return 404 (not 403) to avoid leaking existence of other devices' favorites
       res.status(404).json({ error: 'not_found' });
       return;
     }

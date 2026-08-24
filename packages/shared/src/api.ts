@@ -210,6 +210,8 @@ export interface RouteVehiclesResponse {
 
 // ── GET/POST/DELETE /api/favorites ────────────────────────────────────────────
 
+export const DEVICE_ID_HEADER = 'x-device-id' as const;
+
 export interface Favorite {
   id: number;
   stopId: string | null;

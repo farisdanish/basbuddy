@@ -517,7 +517,23 @@ describe('BasBuddy REST API (M4)', () => {
 
   // ── 6. Favorites CRUD (/api/favorites) ─────────────────────────────────────
   describe('Favorites CRUD', () => {
-    it('GET /api/favorites returns list of favorites', async () => {
+    const testDeviceId = '11111111-2222-4333-8444-555555555555';
+
+    it('GET /api/favorites returns 400 when x-device-id header is missing', async () => {
+      const res = await request(app).get('/api/favorites');
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('missing_device_id');
+    });
+
+    it('GET /api/favorites returns 400 when x-device-id header is invalid', async () => {
+      const res = await request(app)
+        .get('/api/favorites')
+        .set('x-device-id', 'bad!id');
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('invalid_device_id');
+    });
+
+    it('GET /api/favorites returns list of favorites for requesting device', async () => {
       mockPool.query.mockResolvedValueOnce({
         rows: [
           { id: 1, stop_id: 'SA1', route_id: '753', label: 'Home', created_at: '2026-08-22T10:00:00Z' },
@@ -525,11 +541,26 @@ describe('BasBuddy REST API (M4)', () => {
         rowCount: 1,
       });
 
-      const res = await request(app).get('/api/favorites');
+      const res = await request(app)
+        .get('/api/favorites')
+        .set('x-device-id', testDeviceId);
+
       expect(res.status).toBe(200);
       expect(res.body.favorites).toHaveLength(1);
       expect(res.body.favorites[0].stopId).toBe('SA1');
       expect(res.body.favorites[0].label).toBe('Home');
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE device_id = $1'),
+        [testDeviceId],
+      );
+    });
+
+    it('POST /api/favorites returns 400 when x-device-id is missing', async () => {
+      const res = await request(app)
+        .post('/api/favorites')
+        .send({ stopId: 'SA1', label: 'Work' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('missing_device_id');
     });
 
     it('POST /api/favorites creates stop favorite and returns 201', async () => {
@@ -542,12 +573,17 @@ describe('BasBuddy REST API (M4)', () => {
 
       const res = await request(app)
         .post('/api/favorites')
+        .set('x-device-id', testDeviceId)
         .send({ stopId: 'SA1', label: 'Work' });
 
       expect(res.status).toBe(201);
       expect(res.body.id).toBe(42);
       expect(res.body.stopId).toBe('SA1');
       expect(res.body.label).toBe('Work');
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO favorites'),
+        ['SA1', null, 'Work', testDeviceId],
+      );
     });
 
     it('POST /api/favorites creates route-only favorite and returns 201', async () => {
@@ -560,6 +596,7 @@ describe('BasBuddy REST API (M4)', () => {
 
       const res = await request(app)
         .post('/api/favorites')
+        .set('x-device-id', testDeviceId)
         .send({ routeId: 'T7280', label: 'Route T728' });
 
       expect(res.status).toBe(201);
@@ -567,11 +604,16 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.routeId).toBe('T7280');
       expect(res.body.stopId).toBeNull();
       expect(res.body.label).toBe('Route T728');
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO favorites'),
+        [null, 'T7280', 'Route T728', testDeviceId],
+      );
     });
 
     it('POST /api/favorites returns 400 when both stopId and routeId are missing', async () => {
       const res = await request(app)
         .post('/api/favorites')
+        .set('x-device-id', testDeviceId)
         .send({ label: 'No Stop Or Route' });
 
       expect(res.status).toBe(400);
@@ -585,29 +627,46 @@ describe('BasBuddy REST API (M4)', () => {
 
       const res = await request(app)
         .post('/api/favorites')
+        .set('x-device-id', testDeviceId)
         .send({ stopId: 'INVALID_STOP' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('invalid_stop_or_route');
     });
 
+    it('DELETE /api/favorites/:id returns 400 when x-device-id is missing', async () => {
+      const res = await request(app).delete('/api/favorites/42');
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('missing_device_id');
+    });
+
     it('DELETE /api/favorites/:id returns 204 on successful deletion', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
-      const res = await request(app).delete('/api/favorites/42');
+      const res = await request(app)
+        .delete('/api/favorites/42')
+        .set('x-device-id', testDeviceId);
       expect(res.status).toBe(204);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE id = $1 AND device_id = $2'),
+        [42, testDeviceId],
+      );
     });
 
-    it('DELETE /api/favorites/:id returns 404 when favorite not found', async () => {
+    it('DELETE /api/favorites/:id returns 404 when favorite not found or belongs to another device', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
-      const res = await request(app).delete('/api/favorites/999');
+      const res = await request(app)
+        .delete('/api/favorites/999')
+        .set('x-device-id', testDeviceId);
       expect(res.status).toBe(404);
       expect(res.body.error).toBe('not_found');
     });
 
     it('DELETE /api/favorites/:id returns 400 on invalid NaN ID', async () => {
-      const res = await request(app).delete('/api/favorites/not-a-number');
+      const res = await request(app)
+        .delete('/api/favorites/not-a-number')
+        .set('x-device-id', testDeviceId);
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('invalid_id');
     });

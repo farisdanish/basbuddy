@@ -3,6 +3,9 @@
 // Base URL defaults to '' (same origin) — the Vite dev proxy forwards /api/* to
 // the API server at localhost:3001.
 
+import { DEVICE_ID_HEADER } from '@basbuddy/shared';
+import { getDeviceId } from './deviceId.ts';
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -10,6 +13,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      [DEVICE_ID_HEADER]: getDeviceId(),
       ...(options?.headers ?? {}),
     },
   });

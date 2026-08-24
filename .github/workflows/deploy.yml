@@ -45,6 +45,23 @@ jobs:
             set +a
             npm run migrate
 
+            echo "=== 3.1 Cleaning up legacy favorites (one-time safe cleanup) ==="
+            node --input-type=module -e "
+              import pg from 'pg';
+              const { Pool } = pg;
+              const pool = new Pool({
+                connectionString: process.env.DATABASE_URL || \`postgresql://\${process.env.POSTGRES_USER || 'basbuddy'}:\${encodeURIComponent(process.env.POSTGRES_PASSWORD || '')}@\${process.env.POSTGRES_HOST || '127.0.0.1'}:\${process.env.POSTGRES_PORT || 5432}/\${process.env.POSTGRES_DB || 'basbuddy'}\`,
+              });
+              try {
+                const res = await pool.query(\"DELETE FROM favorites WHERE device_id = 'legacy'\");
+                console.log(\`[deploy] Purged \${res.rowCount ?? 0} legacy test favorite rows.\`);
+              } catch (err) {
+                console.warn('[deploy] Legacy favorites cleanup note:', err.message);
+              } finally {
+                await pool.end();
+              }
+            " || true
+
             echo "=== 4. Syncing systemd service files ==="
             sudo cp deploy/basbuddy-api.service /etc/systemd/system/basbuddy-api.service
             sudo cp deploy/basbuddy-poller.service /etc/systemd/system/basbuddy-poller.service
