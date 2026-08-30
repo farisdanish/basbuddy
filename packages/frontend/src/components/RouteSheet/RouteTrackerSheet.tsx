@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { X, Navigation, Radio, Star, Calendar, Clock, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { X, Navigation, Radio, Star, Calendar, Clock, AlertCircle, ChevronUp, ChevronDown, Search } from 'lucide-react';
 import type { RouteDetailsResponse } from '@basbuddy/shared';
 import { useFavorites } from '../../hooks/useFavorites.ts';
 import { RouteTimetableModal } from './RouteTimetableModal.tsx';
 import { getServiceBadge } from '../../utils/serviceBadges.ts';
+import { filterRouteStops } from '../../utils/routeStopsFilter.ts';
 
 interface RouteTrackerSheetProps {
   routeData: RouteDetailsResponse | null;
@@ -23,6 +24,7 @@ export function RouteTrackerSheet({
   const [activeDirectionIndex, setActiveDirectionIndex] = useState(0);
   const [timetableOpen, setTimetableOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [stopSearchQuery, setStopSearchQuery] = useState('');
   const { favorites, addFavorite, removeFavorite } = useFavorites();
 
   const vehiclesCount = routeData?.vehicles?.length ?? 0;
@@ -51,6 +53,11 @@ export function RouteTrackerSheet({
   const activeStops = activeDirection?.stops && activeDirection.stops.length > 0
     ? activeDirection.stops
     : (routeData?.stops ?? []);
+
+  const filteredStops = useMemo(
+    () => filterRouteStops(activeStops, stopSearchQuery),
+    [activeStops, stopSearchQuery],
+  );
 
   const nextDeparture = timetable?.nextDepartures?.[0];
 
@@ -124,7 +131,7 @@ export function RouteTrackerSheet({
       <aside
         aria-label="Route inspector"
         data-testid="route-inspector"
-        className="absolute top-20 left-4 right-4 z-30 max-w-md mx-auto md:left-6 md:right-auto md:top-20 md:w-96 md:max-w-none md:mx-0 max-h-[calc(100vh-13rem)] md:max-h-[calc(100vh-12rem)] flex flex-col rounded-2xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden transition-all"
+        className="absolute top-20 left-4 right-4 z-20 max-w-md mx-auto md:left-4 md:right-auto md:top-20 md:bottom-14 md:w-[360px] md:max-w-none md:mx-0 max-h-[calc(100vh-13rem)] md:max-h-none flex flex-col rounded-2xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden transition-all"
       >
         {/* Route Header */}
         <div className="flex items-center justify-between gap-3 p-4 border-b border-white/10 shrink-0">
@@ -224,10 +231,11 @@ export function RouteTrackerSheet({
                 <button
                   type="button"
                   onClick={() => setTimetableOpen(true)}
+                  aria-label="View timetable and schedule"
                   className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#F4A100]/20 hover:bg-[#F4A100]/30 text-[#F4A100] text-[11px] font-sans font-semibold border border-[#F4A100]/40 transition-all active:scale-95 shrink-0"
                 >
                   <Calendar className="w-3 h-3" />
-                  <span>View Schedule</span>
+                  <span>Timetable & ETAs</span>
                 </button>
               </div>
             </div>
@@ -241,6 +249,7 @@ export function RouteTrackerSheet({
               <button
                 type="button"
                 onClick={() => setTimetableOpen(true)}
+                aria-label="View timetable and schedule"
                 className="flex items-center gap-1 text-[11px] font-sans font-medium text-[#FFF8EE]/60 hover:text-[#F4A100] transition-colors"
               >
                 <Calendar className="w-3 h-3" />
@@ -274,11 +283,14 @@ export function RouteTrackerSheet({
         {/* Sequence of stops along route: Horizontal on mobile, Vertical list on desktop/web view */}
         {activeStops && activeStops.length > 0 && (
           <div className="p-3 bg-black/20 md:p-3.5 flex flex-col min-h-0 flex-1 overflow-hidden">
+            {/* Header: Title & Counts */}
             <div className="text-[10px] font-mono uppercase tracking-wider text-[#FFF8EE]/40 mb-1.5 px-1 flex items-center justify-between shrink-0">
               <span className="flex items-center gap-1.5">
                 <span>Route Stops</span>
                 <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-[9px] font-medium text-[#F4A100]">
-                  {activeStops.length}
+                  {stopSearchQuery.trim()
+                    ? `${filteredStops.length} of ${activeStops.length}`
+                    : activeStops.length}
                 </span>
               </span>
               <span className="text-[9px] text-[#FFF8EE]/30 hidden md:inline font-sans normal-case">
@@ -286,48 +298,88 @@ export function RouteTrackerSheet({
               </span>
             </div>
 
-            {/* Mobile: horizontal scroll strip | Web/Desktop (md:): vertical scrollable list */}
-            <div className="flex flex-row md:flex-col items-center md:items-stretch gap-1.5 md:gap-1.5 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto no-scrollbar md:basbuddy-scroll pb-1 md:pb-0 md:pr-1 min-h-0 flex-1">
-              {activeStops.map((stop, i) => {
-                const isSelected = selectedStopId === stop.stopId;
-                const hasEta = stop.etaSeconds !== undefined && stop.etaSeconds !== null;
-                return (
-                  <button
-                    key={stop.stopId}
-                    type="button"
-                    onClick={() => onSelectStop(stop.stopId)}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 md:py-2 rounded-xl text-left transition-all shrink-0 max-w-[160px] md:max-w-none md:w-full active:scale-[0.98] group ${
-                      isSelected
-                        ? 'bg-[#1F7A6C]/40 border-[#1F7A6C] ring-1 ring-[#1F7A6C]/60 text-[#FFF8EE]'
-                        : 'bg-white/5 hover:bg-[#1F7A6C]/30 hover:border-[#1F7A6C]/50 border border-white/10 text-[#FFF8EE]'
-                    }`}
-                  >
-                    <span
-                      className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-mono font-medium shrink-0 transition-colors ${
+            {/* Quick Stop Search Filter Bar */}
+            <div className="relative mb-2 shrink-0">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#FFF8EE]/40 pointer-events-none" />
+              <input
+                type="text"
+                value={stopSearchQuery}
+                onChange={(e) => setStopSearchQuery(e.target.value)}
+                placeholder="Filter stops along route..."
+                aria-label="Filter stops along route"
+                className="w-full bg-[#101B2D]/70 border border-white/10 rounded-xl pl-8 pr-7 py-1 text-xs text-[#FFF8EE] placeholder:text-[#FFF8EE]/30 focus:outline-none focus:border-[#F4A100]/60 focus:ring-1 focus:ring-[#F4A100]/30 transition-all font-sans"
+              />
+              {stopSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setStopSearchQuery('')}
+                  aria-label="Clear stop filter"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#FFF8EE]/40 hover:text-[#FFF8EE] p-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Stops list or Empty state */}
+            {filteredStops.length === 0 ? (
+              <div className="py-6 px-3 text-center flex flex-col items-center justify-center text-xs text-[#FFF8EE]/50">
+                <p>No stops found matching &ldquo;{stopSearchQuery}&rdquo;</p>
+                <button
+                  type="button"
+                  onClick={() => setStopSearchQuery('')}
+                  className="mt-2 px-2.5 py-1 text-[11px] font-medium text-[#F4A100] bg-[#F4A100]/10 hover:bg-[#F4A100]/20 rounded-lg transition-colors"
+                >
+                  Clear search
+                </button>
+              </div>
+            ) : (
+              /* Mobile: horizontal scroll strip | Web/Desktop (md:): vertical scrollable list */
+              <div className="flex flex-row md:flex-col items-center md:items-stretch gap-1.5 md:gap-1.5 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto no-scrollbar md:basbuddy-scroll pb-1 md:pb-0 md:pr-1 min-h-0 flex-1">
+                {filteredStops.map((stop, i) => {
+                  const isSelected = selectedStopId === stop.stopId;
+                  const hasEta = stop.etaSeconds !== undefined && stop.etaSeconds !== null;
+                  const originalIndex = activeStops.findIndex((s) => s.stopId === stop.stopId);
+                  const displayIndex = originalIndex >= 0 ? originalIndex + 1 : i + 1;
+
+                  return (
+                    <button
+                      key={stop.stopId}
+                      type="button"
+                      onClick={() => onSelectStop(stop.stopId)}
+                      className={`flex items-center gap-2 px-2.5 py-1.5 md:py-2 rounded-xl text-left transition-all shrink-0 max-w-[160px] md:max-w-none md:w-full active:scale-[0.98] group ${
                         isSelected
-                          ? 'bg-[#F4A100] text-[#101B2D] font-bold'
-                          : 'bg-white/10 text-[#F4A100] group-hover:bg-[#F4A100] group-hover:text-[#101B2D]'
+                          ? 'bg-[#1F7A6C]/40 border-[#1F7A6C] ring-1 ring-[#1F7A6C]/60 text-[#FFF8EE]'
+                          : 'bg-white/5 hover:bg-[#1F7A6C]/30 hover:border-[#1F7A6C]/50 border border-white/10 text-[#FFF8EE]'
                       }`}
                     >
-                      {i + 1}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-sans text-[#FFF8EE] truncate group-hover:text-[#F4A100] transition-colors">
-                        {stop.stopName}
-                      </div>
-                      <div className="text-[10px] font-mono text-[#FFF8EE]/40 truncate hidden md:block">
-                        {stop.stopId}
-                      </div>
-                    </div>
-                    {hasEta && (
-                      <span className="hidden md:inline-flex text-[10px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                        {Math.round(stop.etaSeconds! / 60)}m
+                      <span
+                        className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-mono font-medium shrink-0 transition-colors ${
+                          isSelected
+                            ? 'bg-[#F4A100] text-[#101B2D] font-bold'
+                            : 'bg-white/10 text-[#F4A100] group-hover:bg-[#F4A100] group-hover:text-[#101B2D]'
+                        }`}
+                      >
+                        {displayIndex}
                       </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-sans text-[#FFF8EE] truncate group-hover:text-[#F4A100] transition-colors">
+                          {stop.stopName}
+                        </div>
+                        <div className="text-[10px] font-mono text-[#FFF8EE]/40 truncate hidden md:block">
+                          {stop.stopId}
+                        </div>
+                      </div>
+                      {hasEta && (
+                        <span className="hidden md:inline-flex text-[10px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                          {Math.round(stop.etaSeconds! / 60)}m
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </aside>
