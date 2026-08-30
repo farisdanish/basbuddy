@@ -194,7 +194,7 @@ export function Combobox<T>({
           id={listboxId}
           role="listbox"
           aria-label={ariaLabel}
-          className="absolute left-0 right-0 top-full mt-1.5 max-h-60 overflow-y-auto basbuddy-scroll bg-[#182337]/98 border border-white/15 rounded-xl shadow-2xl backdrop-blur-2xl z-50 p-1 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+          className="absolute left-0 right-0 top-full mt-1.5 max-h-60 overflow-y-auto basbuddy-scroll bg-[#101B2D] border border-white/20 rounded-xl shadow-2xl z-50 p-1 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
         >
           {filteredOptions.length === 0 ? (
             <li className="py-4 px-3 text-center text-xs text-[#FFF8EE]/40 font-sans">

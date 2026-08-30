@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Info, Radio, Sparkles, ArrowRight, Bus } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { X, Calendar, Info, Radio, Sparkles, ArrowRight, Bus, ChevronDown, Check } from 'lucide-react';
 import type { RouteDetailsResponse, RouteStopItem } from '@basbuddy/shared';
 import { RouteEtaCalculator } from './RouteEtaCalculator.tsx';
 import { useCompanionDocking } from '../../hooks/useCompanionDocking.ts';
@@ -256,11 +256,25 @@ export function RouteTimetableModal({
   }, [activeStops, originDepartureTime, isFlatSchedule]);
 
   const canDock = useCompanionDocking();
+  const [tripDropdownOpen, setTripDropdownOpen] = useState(false);
+  const tripDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close trip dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (tripDropdownRef.current && !tripDropdownRef.current.contains(e.target as Node)) {
+        setTripDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (!isOpen) return null;
 
   // Find live vehicle positions along the active stops
   const liveVehicles = vehicles.filter((v) => v.freshness === 'live' || v.freshness === 'stale');
+  const selectedTrip = dirDepartures.find((d) => d.tripId === selectedTripId) || dirDepartures[0];
 
   return (
     <div
@@ -273,14 +287,14 @@ export function RouteTimetableModal({
       }}
       className={
         canDock
-          ? 'fixed inset-auto left-[388px] top-20 bottom-14 w-[420px] z-20 pointer-events-none block animate-in fade-in slide-in-from-left-4 duration-200'
+          ? 'fixed inset-auto right-4 md:right-6 top-20 bottom-14 w-full max-w-[440px] z-20 pointer-events-none block animate-in fade-in slide-in-from-right-4 duration-200'
           : 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200'
       }
     >
       <div
         className={
           canDock
-            ? 'relative w-[420px] h-full flex flex-col rounded-2xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden text-[#FFF8EE] pointer-events-auto'
+            ? 'relative w-full h-full flex flex-col rounded-2xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden text-[#FFF8EE] pointer-events-auto'
             : 'relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-3xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden text-[#FFF8EE] animate-in zoom-in-95 duration-200'
         }
       >
@@ -319,23 +333,19 @@ export function RouteTimetableModal({
             <div className="grid grid-cols-2 gap-2">
               {directions.map((dir, index) => {
                 const isSelected = index === activeDirectionIndex;
-                const stopCount = dir.stops?.length ?? activeStops.length;
                 return (
                   <button
-                    key={`${dir.directionId}-${dir.tripHeadsign}`}
+                    key={`${dir.directionId}-${index}`}
                     type="button"
                     onClick={() => setActiveDirectionIndex(index)}
-                    className={`p-2 rounded-xl border text-left transition-all active:scale-[0.99] ${
+                    className={`flex items-center gap-2 p-2 rounded-xl text-left transition-all text-xs font-sans ${
                       isSelected
-                        ? 'bg-[#1F7A6C]/30 border-[#1F7A6C] ring-1 ring-[#1F7A6C]/60 text-[#FFF8EE]'
-                        : 'bg-white/5 border-white/5 text-[#FFF8EE]/60 hover:bg-white/10 hover:text-[#FFF8EE]'
+                        ? 'bg-[#1F7A6C] text-[#FFF8EE] font-semibold shadow-md ring-1 ring-white/20'
+                        : 'bg-white/5 text-[#FFF8EE]/70 hover:bg-white/10 hover:text-[#FFF8EE]'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold">
-                        <ArrowRight className={`w-3 h-3 ${isSelected ? 'text-[#F4A100]' : 'text-white/40'}`} />
-                        {dir.tripHeadsign || `Dir ${dir.directionId}`}
-                    </div>
-                    <div className="text-[10px] opacity-60 ml-4.5">{stopCount} stops</div>
+                    <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#F4A100]' : 'text-[#FFF8EE]/40'}`} />
+                    <span className="truncate">{dir.tripHeadsign || `Direction ${dir.directionId}`}</span>
                   </button>
                 );
               })}
@@ -405,25 +415,74 @@ export function RouteTimetableModal({
 
             {/* Trip Selector Strip */}
             {dirDepartures.length > 0 && (
-              <div className="p-2.5 rounded-xl bg-[#101B2D]/70 border border-white/5 flex items-center justify-between gap-3">
+              <div className="p-2.5 rounded-xl bg-[#101B2D]/70 border border-white/5 flex items-center justify-between gap-3 relative z-30">
                 <div className="flex items-center gap-2 min-w-0">
                   <Bus className="w-4 h-4 text-[#F4A100] shrink-0" />
-                  <span className="text-xs font-sans font-medium text-[#FFF8EE] shrink-0">Trip Run:</span>
-                  <select
-                    value={selectedTripId}
-                    onChange={(e) => setSelectedTripId(e.target.value)}
-                    aria-label="Select scheduled trip departure"
-                    className="bg-[#182337] border border-white/10 text-xs font-mono font-bold text-[#F4A100] py-1 px-2 rounded-lg focus:outline-none focus:border-[#F4A100] truncate"
-                  >
-                    {dirDepartures.map((d) => {
-                      const isNext = d.tripId === nextDepartureTripId;
-                      return (
-                        <option key={d.tripId} value={d.tripId}>
-                          {formatTimeDisplay(d.departureTime)} {isNext ? '(Next Bus)' : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
+                  <span className="text-xs font-sans font-medium text-[#FFF8EE]/80 shrink-0">Trip Run:</span>
+                  
+                  {/* Custom Uniform Dropdown */}
+                  <div ref={tripDropdownRef} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setTripDropdownOpen(!tripDropdownOpen)}
+                      aria-label="Select scheduled trip departure"
+                      aria-expanded={tripDropdownOpen}
+                      className="flex items-center gap-2 bg-[#101B2D] hover:bg-[#182337] border border-white/15 hover:border-[#F4A100]/50 text-xs font-mono font-bold text-[#F4A100] py-1.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#F4A100]/40 transition-all shadow-sm"
+                    >
+                      <span>{selectedTrip ? formatTimeDisplay(selectedTrip.departureTime) : '--:--'}</span>
+                      {selectedTrip?.tripId === nextDepartureTripId && (
+                        <span className="text-[10px] font-sans font-semibold px-1.5 py-0.2 rounded bg-[#F4A100]/20 text-[#F4A100]">
+                          Next Bus
+                        </span>
+                      )}
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 text-[#FFF8EE]/50 transition-transform duration-200 ${
+                          tripDropdownOpen ? 'rotate-180 text-[#F4A100]' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {tripDropdownOpen && (
+                      <ul
+                        role="listbox"
+                        aria-label="Trip Run departures"
+                        className="absolute left-0 top-full mt-1.5 w-52 max-h-56 overflow-y-auto basbuddy-scroll bg-[#101B2D] border border-white/20 rounded-xl shadow-2xl z-50 p-1 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+                      >
+                        {dirDepartures.map((d) => {
+                          const isSelected = d.tripId === selectedTripId;
+                          const isNext = d.tripId === nextDepartureTripId;
+                          return (
+                            <li
+                              key={d.tripId}
+                              role="option"
+                              aria-selected={isSelected}
+                              onClick={() => {
+                                setSelectedTripId(d.tripId);
+                                setTripDropdownOpen(false);
+                              }}
+                              className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono cursor-pointer transition-colors ${
+                                isSelected
+                                  ? 'bg-[#1F7A6C]/40 text-[#FFF8EE]'
+                                  : 'text-[#FFF8EE]/80 hover:bg-white/5'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className={`font-bold ${isSelected ? 'text-[#F4A100]' : 'text-[#FFF8EE]'}`}>
+                                  {formatTimeDisplay(d.departureTime)}
+                                </span>
+                                {isNext && (
+                                  <span className="text-[9px] font-sans font-semibold px-1.5 py-0.2 rounded bg-[#F4A100]/20 text-[#F4A100] shrink-0">
+                                    Next
+                                  </span>
+                                )}
+                              </div>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-[#F4A100] shrink-0 ml-2" />}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
                 </div>
 
                 <div className="text-[10px] font-mono text-[#FFF8EE]/50 shrink-0">

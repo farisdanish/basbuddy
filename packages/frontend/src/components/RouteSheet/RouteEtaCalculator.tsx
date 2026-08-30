@@ -169,7 +169,7 @@ export function RouteEtaCalculator({
         </div>
 
         {/* Boarding Stop (From) */}
-        <div>
+        <div className="relative z-30">
           <label className="text-[11px] font-sans font-medium text-[#FFF8EE]/60 flex items-center gap-1 mb-1">
             <span className="w-2 h-2 rounded-full bg-[#1F7A6C]" />
             <span>Boarding Stop (From)</span>
@@ -201,7 +201,7 @@ export function RouteEtaCalculator({
         </div>
 
         {/* Alighting Stop (To) */}
-        <div>
+        <div className="relative z-20">
           <label className="text-[11px] font-sans font-medium text-[#FFF8EE]/60 flex items-center gap-1 mb-1">
             <span className="w-2 h-2 rounded-full bg-[#FF5A47]" />
             <span>Alighting Stop (To)</span>
