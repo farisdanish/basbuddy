@@ -1,10 +1,11 @@
 import { useMap } from 'react-leaflet';
 import { Locate } from 'lucide-react';
 import type { GeoPosition } from '../../hooks/useGeolocation.ts';
+import { smoothFlyTo, getTargetCenter } from '../../lib/mapUtils.ts';
 
 interface RecenterButtonProps {
   position: GeoPosition | null;
-  defaultCenter: [number, number];
+  defaultCenter?: [number, number];
 }
 
 export function RecenterButton({ position, defaultCenter }: RecenterButtonProps) {
@@ -12,14 +13,8 @@ export function RecenterButton({ position, defaultCenter }: RecenterButtonProps)
 
   const handleRecenter = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const target: [number, number] = position
-      ? [position.lat, position.lon]
-      : defaultCenter;
-
-    map.flyTo(target, 15, {
-      animate: true,
-      duration: 1.2,
-    });
+    const target = getTargetCenter(position, defaultCenter);
+    smoothFlyTo(map, target, 15, 1.2, true);
   };
 
   return (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Info, HelpCircle, MessageSquare, ExternalLink, ShieldCheck, Github, Radio, Clock, Heart } from 'lucide-react';
+import { X, Info, HelpCircle, MessageSquare, ExternalLink, ShieldCheck, Github, Radio, Clock, Heart, Star, GitPullRequest } from 'lucide-react';
+import { BRAND_CONFIG } from '../../config/branding.ts';
 
 export type InfoTabType = 'about' | 'faq' | 'feedback';
 
@@ -50,10 +51,10 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
             </div>
             <div>
               <h2 id="info-modal-title" className="text-base font-sans font-bold text-[#FFF8EE] leading-tight">
-                BasBuddy Info & Support
+                {BRAND_CONFIG.brandName} Info & Support
               </h2>
               <p className="text-xs font-mono text-[#FFF8EE]/50">
-                Malaysia Transit Companion
+                {BRAND_CONFIG.brandTagline}
               </p>
             </div>
           </div>
@@ -121,8 +122,51 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                   <span>Independent & Open Source</span>
                 </div>
                 <p>
-                  <strong>BasBuddy</strong> is an unofficial, high-performance transit tracking service and PWA designed to give commuters transparent, instant access to bus schedules, arrival countdowns, and live GPS positions across Malaysia.
+                  <strong>{BRAND_CONFIG.brandName}</strong> is an unofficial, high-performance transit tracking service and PWA designed to give commuters transparent, instant access to bus schedules, arrival countdowns, and live GPS positions across {BRAND_CONFIG.regionName} and Malaysia.
                 </p>
+              </div>
+
+              {/* Open Source Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <a
+                  href={BRAND_CONFIG.repoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-[#1F7A6C]/30 hover:border-[#1F7A6C]/50 border border-white/10 transition-all active:scale-[0.98] group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Star className="w-4 h-4 text-[#F4A100] group-hover:scale-110 transition-transform" />
+                    <div>
+                      <div className="font-bold text-[#FFF8EE] group-hover:text-[#F4A100] transition-colors">
+                        Star on GitHub
+                      </div>
+                      <div className="text-[10px] text-[#FFF8EE]/50 font-mono">
+                        Support the project
+                      </div>
+                    </div>
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 text-[#FFF8EE]/40 group-hover:text-[#FFF8EE]" />
+                </a>
+
+                <a
+                  href={BRAND_CONFIG.repoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-[#1F7A6C]/30 hover:border-[#1F7A6C]/50 border border-white/10 transition-all active:scale-[0.98] group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <GitPullRequest className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                    <div>
+                      <div className="font-bold text-[#FFF8EE] group-hover:text-[#F4A100] transition-colors">
+                        Contribute Code
+                      </div>
+                      <div className="text-[10px] text-[#FFF8EE]/50 font-mono">
+                        Open source repository
+                      </div>
+                    </div>
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 text-[#FFF8EE]/40 group-hover:text-[#FFF8EE]" />
+                </a>
               </div>
 
               <div className="space-y-2.5">
@@ -158,7 +202,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                   Transit schedules, route geometries, and realtime protobuf feeds are powered by open data published by <strong>Prasarana Malaysia Berhad</strong> and Malaysian transport agencies on <a className="text-[#F4A100] underline" href="https://data.gov.my" target="_blank" rel="noopener noreferrer">data.gov.my</a>.
                 </p>
                 <p className="text-[10px] text-[#FFF8EE]/40">
-                  BasBuddy is not affiliated with, endorsed by, or connected to Prasarana, Rapid Bus, or any government agency.
+                  {BRAND_CONFIG.brandName} is not affiliated with, endorsed by, or connected to Prasarana, Rapid Bus, or any government agency.
                 </p>
               </div>
             </div>
@@ -204,14 +248,14 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                   Is this an official transport authority app?
                 </h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
-                  No. BasBuddy is a free, independent community project built by and for Malaysian commuters using open data from <strong>data.gov.my</strong>.
+                  No. {BRAND_CONFIG.brandName} is a free, independent community project built by and for Malaysian commuters using open data from <strong>data.gov.my</strong>.
                 </p>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
                 <h4 className="font-bold text-[#FFF8EE] flex items-center gap-2">
                   <span className="w-4 h-4 rounded-full bg-[#F4A100]/20 text-[#F4A100] text-[10px] flex items-center justify-center font-mono">Q</span>
-                  How do I install BasBuddy on my phone?
+                  How do I install {BRAND_CONFIG.brandName} on my phone?
                 </h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 pl-6">
                   In Chrome or Safari on your phone, tap the browser menu (or Share button) and choose <strong>&quot;Add to Home Screen&quot;</strong>. It installs instantly and works just like an app!
@@ -227,13 +271,13 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                 <MessageSquare className="w-8 h-8 text-[#F4A100] mx-auto" />
                 <h4 className="font-bold text-sm text-[#FFF8EE]">We&apos;d love your feedback!</h4>
                 <p className="text-[11px] text-[#FFF8EE]/70 max-w-sm mx-auto">
-                  Have a suggestion, noticed a route discrepancy, or want to report a bug? Community feedback helps make BasBuddy better for all commuters.
+                  Have a suggestion, noticed a route discrepancy, or want to report a bug? Community feedback helps make {BRAND_CONFIG.brandName} better for all commuters.
                 </p>
               </div>
 
               <div className="space-y-2">
                 <a
-                  href="https://github.com/farisdanish/basbuddy/issues"
+                  href={`${BRAND_CONFIG.repoUrl}/issues`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 hover:bg-[#1F7A6C]/30 hover:border-[#1F7A6C]/50 border border-white/10 transition-all active:scale-[0.99] group"
@@ -244,7 +288,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                       <div className="font-bold text-[#FFF8EE] group-hover:text-[#F4A100] transition-colors">
                         Submit an Issue / Feature Request
                       </div>
-                      <div className="text-[10px] text-[#FFF8EE]/50">
+                      <div className="text-[10px] text-[#FFF8EE]/50 font-mono">
                         Open a ticket on GitHub
                       </div>
                     </div>
@@ -253,7 +297,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                 </a>
 
                 <a
-                  href="mailto:farisdanish.antoni@gmail.com?subject=BasBuddy%20Feedback"
+                  href={`mailto:${BRAND_CONFIG.supportEmail}?subject=${encodeURIComponent(BRAND_CONFIG.brandName + ' Feedback')}`}
                   className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 hover:bg-[#1F7A6C]/30 hover:border-[#1F7A6C]/50 border border-white/10 transition-all active:scale-[0.99] group"
                 >
                   <div className="flex items-center gap-3">
@@ -262,8 +306,8 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
                       <div className="font-bold text-[#FFF8EE] group-hover:text-[#F4A100] transition-colors">
                         Send Direct Feedback via Email
                       </div>
-                      <div className="text-[10px] text-[#FFF8EE]/50">
-                        farisdanish.antoni@gmail.com
+                      <div className="text-[10px] text-[#FFF8EE]/50 font-mono">
+                        {BRAND_CONFIG.supportEmail}
                       </div>
                     </div>
                   </div>
@@ -276,7 +320,7 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose }: InfoModalPr
 
         {/* Modal Footer */}
         <div className="p-3 sm:px-5 sm:py-3 border-t border-white/10 bg-[#101B2D]/60 flex items-center justify-between text-[11px] text-[#FFF8EE]/50 shrink-0">
-          <span>BasBuddy v1.0 · Unofficial</span>
+          <span>{BRAND_CONFIG.brandName} {BRAND_CONFIG.version} · Open Source</span>
           <button
             type="button"
             onClick={onClose}

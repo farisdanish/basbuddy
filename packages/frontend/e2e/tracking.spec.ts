@@ -534,4 +534,72 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     // Verify header was passed
     expect(capturedDeviceIdHeader).toBe(storedDeviceId);
   });
+
+  test('startup GPS auto-centers map when geolocation permission is granted', async ({ page }) => {
+    await page.context().grantPermissions(['geolocation']);
+    await page.context().setGeolocation({ latitude: 3.1425, longitude: 101.696 });
+
+    await page.goto('/');
+
+    // Wait for map to mount and auto-fly to GPS position
+    await expect.poll(async () => {
+      return await page.evaluate(() => {
+        const map = (window as unknown as { __leafletMap?: { getCenter: () => { lat: number; lng: number } } }).__leafletMap;
+        if (!map) return null;
+        const c = map.getCenter();
+        return { lat: Number(c.lat.toFixed(3)), lng: Number(c.lng.toFixed(3)) };
+      });
+    }, { timeout: 10000 }).toEqual({ lat: 3.143, lng: 101.696 });
+  });
+
+  test('preserves map viewport center and zoom across 30s background polling refreshes without resetting', async ({ page }) => {
+    await page.clock.install();
+    await page.goto('/');
+
+    // Open search and select route 750
+    const searchTrigger = page.getByRole('button', { name: 'Search stops, routes, hubs' });
+    await searchTrigger.click({ force: true });
+
+    const searchInput = page.getByPlaceholder('Search stops, routes...');
+    await searchInput.fill('750');
+
+    const routeButton = page.getByRole('button', { name: /750.*Pasar Seni/i });
+    await expect(routeButton).toBeVisible();
+    await routeButton.click();
+
+    // Verify route inspector opened
+    const routeInspector = page.getByRole('complementary', { name: 'Route inspector' });
+    await expect(routeInspector).toBeVisible();
+
+    // Fast forward 2s to allow initial route fitBounds animation to settle
+    await page.clock.fastForward(2000);
+
+    // Manually move map to custom inspection position
+    await page.evaluate(() => {
+      const map = (window as unknown as { __leafletMap?: { setView: (coords: [number, number], zoom: number) => void } }).__leafletMap;
+      if (map) {
+        map.setView([3.120, 101.680], 16);
+      }
+    });
+
+    // Fast forward 30 seconds to trigger periodic background poller refetch
+    await page.clock.fastForward(30_000);
+
+    // Verify map viewport remained at custom position instead of resetting to route fitBounds
+    const currentCenter = await page.evaluate(() => {
+      const map = (window as unknown as { __leafletMap?: { getCenter: () => { lat: number; lng: number } } }).__leafletMap;
+      if (!map) return null;
+      const c = map.getCenter();
+      return { lat: Number(c.lat.toFixed(3)), lng: Number(c.lng.toFixed(3)) };
+    });
+
+    const currentZoom = await page.evaluate(() => {
+      const map = (window as unknown as { __leafletMap?: { getZoom: () => number } }).__leafletMap;
+      return map ? map.getZoom() : null;
+    });
+
+    expect(currentCenter).toEqual({ lat: 3.120, lng: 101.680 });
+    expect(currentZoom).toBe(16);
+  });
 });
+

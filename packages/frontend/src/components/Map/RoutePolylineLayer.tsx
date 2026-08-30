@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import type { RouteDetailsResponse } from '@basbuddy/shared';
@@ -11,9 +11,22 @@ export function RoutePolylineLayer({
   routeData,
 }: RoutePolylineLayerProps) {
   const map = useMap();
+  const lastFittedRouteId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!routeData || !routeData.shapes || routeData.shapes.length === 0) return;
+    if (!routeData) {
+      lastFittedRouteId.current = null;
+      return;
+    }
+
+    if (!routeData.shapes || routeData.shapes.length === 0) return;
+
+    // Only fitBounds upon initial selection of this route, not on 30s polling re-renders
+    if (lastFittedRouteId.current === routeData.routeId) {
+      return;
+    }
+
+    lastFittedRouteId.current = routeData.routeId;
 
     try {
       const bounds = L.latLngBounds(routeData.shapes);

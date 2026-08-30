@@ -61,12 +61,17 @@ test.describe('Frontend Shell (M5)', () => {
     const leafletContainer = page.locator('.leaflet-container');
     await expect(leafletContainer).toBeVisible();
 
-    // Verify attribution footer
+    // Verify attribution footer with GitHub repository link
     const footer = page.locator('footer');
     await expect(footer).toBeVisible();
     await expect(footer).toContainText('data.gov.my');
     await expect(footer).toContainText('CC BY 4.0');
     await expect(footer).toContainText('Unofficial');
+    await expect(footer).toContainText('GitHub');
+
+    const githubFooterLink = footer.getByRole('link', { name: /GitHub/i });
+    await expect(githubFooterLink).toBeVisible();
+    await expect(githubFooterLink).toHaveAttribute('href', 'https://github.com/farisdanish/basbuddy');
 
     // Assert no unhandled console errors
     expect(consoleErrors).toEqual([]);
@@ -87,6 +92,18 @@ test.describe('Frontend Shell (M5)', () => {
     expect(classAttr).toContain('relative');
     expect(classAttr).toContain('h-full');
     expect(classAttr).toContain('w-full');
+  });
+
+  test('renders header brand badge and handles view reset action', async ({ page }) => {
+    await page.goto('/');
+
+    // Verify brand button is visible in header
+    const brandBtn = page.getByRole('button', { name: /Reset view to BasBuddy home/i }).first();
+    await expect(brandBtn).toBeVisible();
+
+    // Clicking brand button triggers reset without crashing
+    await brandBtn.click();
+    await expect(page.locator('.leaflet-container')).toBeVisible();
   });
 
   test('renders favorites tray when favorite stops are present', async ({ page }) => {
@@ -155,7 +172,7 @@ test.describe('Frontend Shell (M5)', () => {
     expect(faviconRes.status()).toBe(200);
   });
 
-  test('opens Info, FAQ, and Feedback modal from header and footer hyperlinks', async ({ page }) => {
+  test('opens Info, FAQ, and Feedback modal from header and footer hyperlinks with open source actions', async ({ page }) => {
     await page.goto('/');
 
     // 1. Open info modal from header button
@@ -168,6 +185,15 @@ test.describe('Frontend Shell (M5)', () => {
     await expect(infoModal).toBeVisible();
     await expect(infoModal).toContainText('Independent & Open Source');
 
+    // Verify Star on GitHub and Contribute links
+    const starBtn = infoModal.getByRole('link', { name: /Star on GitHub/i });
+    await expect(starBtn).toBeVisible();
+    await expect(starBtn).toHaveAttribute('href', 'https://github.com/farisdanish/basbuddy');
+
+    const contributeBtn = infoModal.getByRole('link', { name: /Contribute Code/i });
+    await expect(contributeBtn).toBeVisible();
+    await expect(contributeBtn).toHaveAttribute('href', 'https://github.com/farisdanish/basbuddy');
+
     // Switch to FAQ tab
     const faqTab = infoModal.getByRole('button', { name: 'FAQ' });
     await faqTab.click();
@@ -177,6 +203,9 @@ test.describe('Frontend Shell (M5)', () => {
     const feedbackTab = infoModal.getByRole('button', { name: 'Feedback' });
     await feedbackTab.click();
     await expect(infoModal).toContainText('Submit an Issue / Feature Request');
+
+    const issueLink = infoModal.getByRole('link', { name: /Submit an Issue/i });
+    await expect(issueLink).toHaveAttribute('href', 'https://github.com/farisdanish/basbuddy/issues');
 
     // Close modal via close button
     const closeBtn = infoModal.getByRole('button', { name: 'Close information modal' });

@@ -1,15 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
+import { Github } from 'lucide-react';
 import { useGeolocation } from './hooks/useGeolocation.ts';
 import { useNearbyStops } from './hooks/useNearbyStops.ts';
 import { useSystemHealth } from './hooks/useSystemHealth.ts';
 import { useRouteDetails } from './hooks/useRouteDetails.ts';
+import { BRAND_CONFIG } from './config/branding.ts';
+import { smoothFlyTo, getTargetCenter, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from './lib/mapUtils.ts';
 
 import { StopMarkersLayer } from './components/Map/StopMarkersLayer.tsx';
 import { VehicleMarkersLayer } from './components/Map/VehicleMarkersLayer.tsx';
 import { RoutePolylineLayer } from './components/Map/RoutePolylineLayer.tsx';
 import { UserLocationMarker } from './components/Map/UserLocationMarker.tsx';
 import { RecenterButton } from './components/Map/RecenterButton.tsx';
+import { MapAutoCenter } from './components/Map/MapAutoCenter.tsx';
 
 import { SearchHeader } from './components/Search/SearchHeader.tsx';
 import { SearchOverlay } from './components/Search/SearchOverlay.tsx';
@@ -29,10 +33,6 @@ function getTimeGradientClass(hour: number): string {
   if (hour >= 19 && hour < 21) return 'gradient-dusk';
   return 'gradient-night';
 }
-
-// KL city centre default (KL Sentral)
-const KL_CENTER: [number, number] = [3.1390, 101.6869];
-const DEFAULT_ZOOM = 14;
 
 function MapViewportSync({ onCenterChange }: { onCenterChange: (center: [number, number]) => void }) {
   useMapEvents({
@@ -72,9 +72,7 @@ export default function App() {
   }, []);
 
   const { position } = useGeolocation();
-  const initialCenter: [number, number] = position
-    ? [position.lat, position.lon]
-    : KL_CENTER;
+  const initialCenter: [number, number] = getTargetCenter(position, DEFAULT_MAP_CENTER);
 
   const [mapCenter, setMapCenter] = useState<[number, number]>(initialCenter);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(() => {
@@ -102,6 +100,15 @@ export default function App() {
     setSelectedRouteId(routeId);
   }, []);
 
+  const handleResetView = useCallback(() => {
+    setSelectedRouteId(null);
+    setSelectedStopId(null);
+    const target = getTargetCenter(position, DEFAULT_MAP_CENTER);
+    if (window.__leafletMap) {
+      smoothFlyTo(window.__leafletMap, target, DEFAULT_MAP_ZOOM, 1.2, true);
+    }
+  }, [position]);
+
   // When a specific route is selected, show ONLY stops for that route; otherwise show nearby stops
   const activeStops = selectedRouteId
     ? (routeData?.stops ?? [])
@@ -112,7 +119,7 @@ export default function App() {
       {/* ── Full-Screen Map Canvas ─────────────────────────────────────────── */}
       <MapContainer
         center={initialCenter}
-        zoom={DEFAULT_ZOOM}
+        zoom={DEFAULT_MAP_ZOOM}
         zoomControl={false}
         className="absolute inset-0 z-0"
         style={{ height: '100%', width: '100%' }}
@@ -123,6 +130,7 @@ export default function App() {
         />
 
         <MapViewportSync onCenterChange={handleCenterChange} />
+        <MapAutoCenter position={position} />
         <UserLocationMarker position={position} />
         <RoutePolylineLayer
           routeData={routeData}
@@ -137,13 +145,14 @@ export default function App() {
           vehicles={routeData?.vehicles ?? []}
           routeShortName={routeData?.routeShortName}
         />
-        <RecenterButton position={position} defaultCenter={KL_CENTER} />
+        <RecenterButton position={position} defaultCenter={DEFAULT_MAP_CENTER} />
       </MapContainer>
 
       {/* ── Top Floating Search & System Status ─────────────────────────────── */}
       <SearchHeader
         onOpenSearch={() => setSearchOpen(true)}
         onOpenInfo={() => setInfoModalTab('about')}
+        onResetView={handleResetView}
         systemStatus={health.status}
       />
 
@@ -199,6 +208,17 @@ export default function App() {
         <span>Data: <a className="pointer-events-auto underline hover:text-[#FFF8EE]" href="https://data.gov.my" target="_blank" rel="noopener noreferrer">data.gov.my</a> / Prasarana ·{' '}
         <a className="pointer-events-auto underline hover:text-[#FFF8EE]" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> ·{' '}
         Unofficial</span>
+        <span className="hidden sm:inline">·</span>
+        <a
+          href={BRAND_CONFIG.repoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pointer-events-auto inline-flex items-center gap-1 underline hover:text-[#F4A100] transition-colors"
+          title="GitHub Repository"
+        >
+          <Github className="w-3 h-3 inline" />
+          <span>GitHub</span>
+        </a>
         <span className="hidden sm:inline">·</span>
         <button
           type="button"

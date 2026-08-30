@@ -5,6 +5,7 @@ import type { StopArrival } from '@basbuddy/shared';
 import { useStopEtas } from '../../hooks/useStopEtas.ts';
 import { useStopTimetable } from '../../hooks/useStopTimetable.ts';
 import { useFavorites } from '../../hooks/useFavorites.ts';
+import { BRAND_CONFIG } from '../../config/branding.ts';
 import { ArrivalRow } from './ArrivalRow.tsx';
 
 interface StopSheetProps {
@@ -41,8 +42,8 @@ export function StopSheet({ stopId, onClose, onSelectRoute }: StopSheetProps) {
     if (!stopId) return;
     const url = `${window.location.origin}/?stop=${stopId}`;
     const shareData = {
-      title: `BasBuddy - Stop ${data?.stopName || stopId}`,
-      text: `Live bus arrival times for ${data?.stopName || stopId} on BasBuddy`,
+      title: `${BRAND_CONFIG.brandName} - Stop ${data?.stopName || stopId}`,
+      text: `Live bus arrival times for ${data?.stopName || stopId} on ${BRAND_CONFIG.brandName}`,
       url,
     };
 
