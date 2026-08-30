@@ -553,7 +553,6 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
   });
 
   test('preserves map viewport center and zoom across 30s background polling refreshes without resetting', async ({ page }) => {
-    await page.clock.install();
     await page.goto('/');
 
     // Open search and select route 750
@@ -567,18 +566,23 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     await expect(routeButton).toBeVisible();
     await routeButton.click();
 
-    // Verify route inspector opened
+    // Verify route inspector opened with route details loaded
     const routeInspector = page.getByRole('complementary', { name: 'Route inspector' });
     await expect(routeInspector).toBeVisible();
+    await expect(routeInspector.getByText(/Pasar Seni - Seksyen 2 Shah Alam/i)).toBeVisible();
 
-    // Fast forward 2s to allow initial route fitBounds animation to settle
-    await page.clock.fastForward(2000);
+    // Allow initial route fitBounds animation to settle
+    await page.waitForTimeout(1500);
+
+    // Install fake clock for testing background 30s polling cycle
+    await page.clock.install();
 
     // Manually move map to custom inspection position
     await page.evaluate(() => {
-      const map = (window as unknown as { __leafletMap?: { setView: (coords: [number, number], zoom: number) => void } }).__leafletMap;
+      const map = (window as unknown as { __leafletMap?: { stop: () => void; setView: (coords: [number, number], zoom: number, options?: { animate: boolean }) => void } }).__leafletMap;
       if (map) {
-        map.setView([3.120, 101.680], 16);
+        map.stop();
+        map.setView([3.120, 101.680], 16, { animate: false });
       }
     });
 

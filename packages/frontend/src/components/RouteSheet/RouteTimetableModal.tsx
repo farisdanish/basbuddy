@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { X, Calendar, Info, Radio, Sparkles, ArrowRight, Bus } from 'lucide-react';
 import type { RouteDetailsResponse, RouteStopItem } from '@basbuddy/shared';
 import { RouteEtaCalculator } from './RouteEtaCalculator.tsx';
+import { useCompanionDocking } from '../../hooks/useCompanionDocking.ts';
 
 interface RouteTimetableModalProps {
   isOpen: boolean;
@@ -254,6 +255,8 @@ export function RouteTimetableModal({
     });
   }, [activeStops, originDepartureTime, isFlatSchedule]);
 
+  const canDock = useCompanionDocking();
+
   if (!isOpen) return null;
 
   // Find live vehicle positions along the active stops
@@ -262,14 +265,25 @@ export function RouteTimetableModal({
   return (
     <div
       role="dialog"
-      aria-modal="true"
+      aria-modal={!canDock}
       aria-labelledby="timetable-pane-title"
+      data-testid="route-timetable-modal"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (!canDock && e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200 md:bg-transparent md:backdrop-blur-none md:p-0 md:pointer-events-none md:inset-auto md:top-20 md:right-6 md:w-[440px] md:max-h-[calc(100vh-10rem)] md:block"
+      className={
+        canDock
+          ? 'fixed inset-auto left-[388px] top-20 bottom-14 w-[420px] z-20 pointer-events-none block animate-in fade-in slide-in-from-left-4 duration-200'
+          : 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200'
+      }
     >
-      <div className="relative w-full max-w-lg max-h-[85vh] md:max-h-[calc(100vh-10rem)] md:w-[440px] flex flex-col rounded-3xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden text-[#FFF8EE] md:pointer-events-auto transition-all animate-in md:slide-in-from-right-4 duration-200">
+      <div
+        className={
+          canDock
+            ? 'relative w-[420px] h-full flex flex-col rounded-2xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden text-[#FFF8EE] pointer-events-auto'
+            : 'relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-3xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden text-[#FFF8EE] animate-in zoom-in-95 duration-200'
+        }
+      >
         {/* Header section */}
         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#101B2D]/90 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
