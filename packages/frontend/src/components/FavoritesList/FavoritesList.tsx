@@ -1,4 +1,4 @@
-import { Star, Bus, MapPin } from 'lucide-react';
+import { Star, Bus, MapPin, SlidersHorizontal } from 'lucide-react';
 import { useFavorites } from '../../hooks/useFavorites.ts';
 
 interface FavoritesListProps {
@@ -6,6 +6,7 @@ interface FavoritesListProps {
   selectedRouteId?: string | null;
   onSelectStop?: (stopId: string) => void;
   onSelectRoute?: (routeId: string) => void;
+  onOpenModal?: () => void;
 }
 
 export function FavoritesList({
@@ -13,6 +14,7 @@ export function FavoritesList({
   selectedRouteId,
   onSelectStop,
   onSelectRoute,
+  onOpenModal,
 }: FavoritesListProps) {
   const { favorites, loading } = useFavorites();
 
@@ -27,10 +29,18 @@ export function FavoritesList({
         paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
       }}
     >
-      <div className="flex items-center gap-1 text-[11px] font-mono font-semibold uppercase tracking-wider text-[#F4A100] px-1 shrink-0">
-        <Star className="w-3 h-3 fill-[#F4A100]" />
-        <span>Saved</span>
-      </div>
+      <button
+        type="button"
+        id="favorites-manage-button"
+        onClick={onOpenModal}
+        aria-label={`Saved favorites (${favorites.length})`}
+        title="Manage saved favorites"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#F4A100]/15 hover:bg-[#F4A100]/25 text-[#F4A100] border border-[#F4A100]/30 text-[11px] font-mono font-semibold uppercase tracking-wider shrink-0 active:scale-95 transition-all"
+      >
+        <Star className="w-3.5 h-3.5 fill-[#F4A100]" />
+        <span>Saved ({favorites.length})</span>
+        <SlidersHorizontal className="w-3 h-3 text-[#F4A100]/70 ml-0.5" />
+      </button>
 
       {favorites.map((fav) => {
         const isRouteFav = Boolean(fav.routeId && !fav.stopId);
