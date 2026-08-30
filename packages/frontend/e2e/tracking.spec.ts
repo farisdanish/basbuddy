@@ -470,14 +470,27 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     await timetableBtn.click();
 
     // Verify timetable modal is visible with scheduled departures
-    const timetableDialog = page.getByRole('dialog');
-    await expect(timetableDialog).toBeVisible({ timeout: 5000 });
-    await expect(timetableDialog).toContainText(/Timetable/i);
+    const timetableModal = page.getByTestId('route-timetable-modal');
+    await expect(timetableModal).toBeVisible({ timeout: 5000 });
+    await expect(timetableModal).toContainText(/Timetable/i);
 
-    // Close timetable via close button
-    const closeTimetableBtn = timetableDialog.getByRole('button', { name: 'Close timetable' });
-    await closeTimetableBtn.click();
-    await expect(timetableDialog).not.toBeVisible();
+    // Switch to Live Buses tab and tap the active bus vehicle card
+    const liveBusesBtn = timetableModal.getByRole('button', { name: /Live Buses/i });
+    await expect(liveBusesBtn).toBeVisible();
+    await liveBusesBtn.click();
+
+    const vehicleCard = timetableModal.getByTestId('vehicle-card-TRIP-750-1');
+    await expect(vehicleCard).toBeVisible();
+    await vehicleCard.click();
+
+    // Selecting a stop on mobile dismisses the timetable modal so StopSheet drawer is interactable in front
+    await expect(timetableModal).not.toBeVisible();
+    const modalStopHeading = page.getByRole('heading', { name: 'Mid Valley North Court' });
+    await expect(modalStopHeading).toBeVisible({ timeout: 5000 });
+
+    // Dismiss StopSheet
+    await page.keyboard.press('Escape');
+    await expect(modalStopHeading).not.toBeVisible();
 
     // Minimize route inspector on mobile
     const minimizeBtn = page.getByRole('button', { name: 'Minimize route inspector' });

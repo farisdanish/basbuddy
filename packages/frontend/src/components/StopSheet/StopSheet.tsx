@@ -84,8 +84,8 @@ export function StopSheet({ stopId, onClose, onSelectRoute }: StopSheetProps) {
       }}
     >
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-40 rounded-t-3xl bg-[#182337] border-t border-white/10 shadow-2xl flex flex-col max-h-[85vh]">
+        <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm transition-opacity" />
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-[70] rounded-t-3xl bg-[#182337] border-t border-white/10 shadow-2xl flex flex-col max-h-[85vh]">
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
             <div className="w-10 h-1.5 rounded-full bg-white/20" />

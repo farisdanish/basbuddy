@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { X, Calendar, Info, Radio, Sparkles, ArrowRight, Bus, ChevronDown, Check } from 'lucide-react';
 import type { RouteDetailsResponse, RouteStopItem } from '@basbuddy/shared';
 import { RouteEtaCalculator } from './RouteEtaCalculator.tsx';
@@ -266,6 +266,18 @@ export function RouteTimetableModal({
   const canDock = useCompanionDocking();
   const [tripDropdownOpen, setTripDropdownOpen] = useState(false);
   const tripDropdownRef = useRef<HTMLDivElement>(null);
+
+  // When a stop is selected on mobile/modal overlay, dismiss the modal so StopSheet is brought to the front
+  const handleSelectStop = useCallback(
+    (stopId: string) => {
+      onSelectStop?.(stopId);
+      const isWidescreen = typeof window !== 'undefined' && window.innerWidth >= 1280 && window.innerWidth - 828 >= 450;
+      if (!isWidescreen) {
+        onClose();
+      }
+    },
+    [onSelectStop, onClose],
+  );
 
   // Close trip dropdown on outside click
   useEffect(() => {
@@ -561,7 +573,7 @@ export function RouteTimetableModal({
                           ? 'bg-[#1F7A6C]/30 border border-[#1F7A6C]/60 text-[#FFF8EE]'
                           : 'hover:bg-white/5 border border-transparent'
                       }`}
-                      onClick={() => onSelectStop && onSelectStop(stop.stopId)}
+                      onClick={() => handleSelectStop(stop.stopId)}
                     >
                       {/* Timeline Node Point */}
                       <div className="relative flex items-center justify-center shrink-0 z-10 mt-0.5">
@@ -639,7 +651,7 @@ export function RouteTimetableModal({
               activeDirectionIndex={activeDirectionIndex}
               activeStops={activeStops}
               dwellMinutesMap={dwellMinutesMap}
-              onSelectStop={onSelectStop}
+              onSelectStop={handleSelectStop}
               onSwitchTab={(tab) => setActiveTab(tab)}
             />
           </div>
@@ -775,7 +787,7 @@ export function RouteTimetableModal({
             <RouteEtaCalculator
               stops={activeStops}
               vehicles={vehicles}
-              onSelectStop={onSelectStop}
+              onSelectStop={handleSelectStop}
               initialOriginStopId={selectedStopId}
             />
           </div>
