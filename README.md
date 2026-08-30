@@ -15,10 +15,12 @@ BasBuddy is an independent, mobile-first transit tracker designed to solve daily
 
 ### Key Capabilities
 
-- **Live Vehicle Tracking**: Interactive full-screen map rendering real-time bus positions with directional heading arrows and GPS signal pulse indicators.
+- **Live Vehicle Tracking & Fleet Status**: Interactive full-screen map rendering real-time bus positions with directional heading arrows, speed telemetry badges (Cruising, Slow Traffic), live dwell observation, and GPS signal freshness pulses.
 - **Instant Arrival Estimates (ETAs)**: Sub-millisecond stop arrival countdowns served directly from high-speed cache, calculated via polyline projection and schedule reconciliation.
+- **Multi-Agency & Hub Navigation**: Slide-out navigation drawer featuring agency filters (Smart Selangor, PJ City Bus, MRT Feeder, RapidKL) and one-tap shortcuts to major transit hubs (KL Sentral, Pasar Seni, TBS, Putrajaya Sentral, etc.).
+- **Multi-Modal Schedules**: Complete timetable explorer covering RapidKL buses, 90+ MRT Feeder bus lines, and Prasarana rail networks (LRT Kelana Jaya/Ampang, MRT Kajang/Putrajaya, KL Monorail, Sunway BRT).
 - **Transparent Data Freshness**: Clear visual badges differentiating active real-time GPS telemetry from static timetable estimates, with automatic degraded feed detection.
-- **Commuter-First Interaction**: Gesture-driven bottom sheets, one-tap favorite stops tray, nearby stop geolocation discovery, and instant debounced search.
+- **Commuter-First Interaction**: Gesture-driven bottom sheets, searchable route station selector, one-tap favorite stops/routes tray, nearby stop geolocation discovery, and instant debounced search.
 - **Progressive Web App (PWA)**: Installable application with offline app shell caching and responsive daylight-optimized design tokens.
 
 ---
