@@ -52,6 +52,7 @@ routesRouter.get('/routes', async (req, res) => {
   const pool = req.app.locals['pool'] as Pool;
   const valkey = req.app.locals['valkey'] as Redis | undefined;
   const { near, radiusMeters: radiusStr, limit: limitStr } = req.query;
+  const feedId = req.query.feedId as string | undefined;
 
   try {
     if (near && typeof near === 'string') {
@@ -64,24 +65,18 @@ routesRouter.get('/routes', async (req, res) => {
       }
 
       const radiusMeters = Math.min(parseFloat(String(radiusStr ?? '25000')), 50000);
-      const limit = Math.min(parseInt(String(limitStr ?? '20'), 10), 50);
+      const limit = Math.min(parseInt(String(limitStr ?? '50'), 10), 100);
 
-      // Bounding box approximation
-      const latDelta = radiusMeters / 111_000;
-      const lonDelta = radiusMeters / (111_000 * Math.cos((lat * Math.PI) / 180));
+      // Bounding box pre-filter
+      const latDelta = radiusMeters / 111_320;
+      const lonDelta = radiusMeters / (111_320 * Math.cos((lat * Math.PI) / 180));
       const minLat = lat - latDelta;
       const maxLat = lat + latDelta;
       const minLon = lon - lonDelta;
       const maxLon = lon + lonDelta;
 
-      const result = await pool.query<{
-        route_id: string;
-        route_short_name: string;
-        route_long_name: string;
-        route_color: string;
-        distance_meters: number;
-      }>(
-        `SELECT r.route_id, r.route_short_name, r.route_long_name, r.route_color,
+      const params: unknown[] = [lat, lon, minLat, maxLat, minLon, maxLon, radiusMeters, limit];
+      let query = `SELECT r.route_id, r.route_short_name, r.route_long_name, r.route_color,
                 ROUND(MIN(
                   6371000 * acos(
                     LEAST(1.0, GREATEST(-1.0,
@@ -92,12 +87,18 @@ routesRouter.get('/routes', async (req, res) => {
                   )
                 )) AS distance_meters
          FROM routes r
-         JOIN trips t ON t.route_id = r.route_id
-         JOIN stop_times st ON st.trip_id = t.trip_id
-         JOIN stops s ON s.stop_id = st.stop_id
+         JOIN trips t ON t.feed_id = r.feed_id AND t.route_id = r.route_id
+         JOIN stop_times st ON st.feed_id = t.feed_id AND st.trip_id = t.trip_id
+         JOIN stops s ON s.feed_id = st.feed_id AND s.stop_id = st.stop_id
          WHERE s.stop_lat BETWEEN $3 AND $4
-           AND s.stop_lon BETWEEN $5 AND $6
-         GROUP BY r.route_id, r.route_short_name, r.route_long_name, r.route_color
+           AND s.stop_lon BETWEEN $5 AND $6`;
+
+      if (feedId) {
+        params.push(feedId);
+        query += ` AND r.feed_id = $${params.length}`;
+      }
+
+      query += ` GROUP BY r.route_id, r.route_short_name, r.route_long_name, r.route_color
          HAVING MIN(
                   6371000 * acos(
                     LEAST(1.0, GREATEST(-1.0,
@@ -108,9 +109,15 @@ routesRouter.get('/routes', async (req, res) => {
                   )
                 ) <= $7
          ORDER BY distance_meters ASC
-         LIMIT $8`,
-        [lat, lon, minLat, maxLat, minLon, maxLon, radiusMeters, limit]
-      );
+         LIMIT $8`;
+
+      const result = await pool.query<{
+        route_id: string;
+        route_short_name: string;
+        route_long_name: string;
+        route_color: string;
+        distance_meters: number;
+      }>(query, params);
 
       const liveCounts: Record<string, number> = {};
       if (valkey && result.rows.length > 0 && typeof valkey.pipeline === 'function') {
@@ -148,12 +155,19 @@ routesRouter.get('/routes', async (req, res) => {
     }
 
     // Standard unscoped GET /api/routes
-    const result = await pool.query<{
-      route_id: string;
-      route_short_name: string;
-      route_long_name: string;
-      route_color: string;
-    }>('SELECT route_id, route_short_name, route_long_name, route_color FROM routes ORDER BY route_short_name');
+    const result = feedId
+      ? await pool.query<{
+          route_id: string;
+          route_short_name: string;
+          route_long_name: string;
+          route_color: string;
+        }>('SELECT route_id, route_short_name, route_long_name, route_color FROM routes WHERE feed_id = $1 ORDER BY route_short_name', [feedId])
+      : await pool.query<{
+          route_id: string;
+          route_short_name: string;
+          route_long_name: string;
+          route_color: string;
+        }>('SELECT route_id, route_short_name, route_long_name, route_color FROM routes ORDER BY route_short_name');
 
     const liveCounts: Record<string, number> = {};
     if (valkey && result.rows.length > 0 && typeof valkey.pipeline === 'function') {
@@ -209,6 +223,7 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
   const pool = req.app.locals['pool'] as Pool;
   const valkey = req.app.locals['valkey'] as Redis;
   const { routeId } = req.params;
+  const feedId = (req.query.feedId as string | undefined) || 'rapid-bus-kl';
 
   try {
     // 1. Get route basic info
@@ -218,8 +233,8 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
       route_long_name: string;
       route_color: string;
     }>(
-      'SELECT route_id, route_short_name, route_long_name, route_color FROM routes WHERE route_id = $1',
-      [routeId],
+      'SELECT route_id, route_short_name, route_long_name, route_color FROM routes WHERE route_id = $1 AND feed_id = $2',
+      [routeId, feedId],
     );
 
     if (routeRes.rowCount === 0) {
@@ -238,9 +253,9 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
     }>(
       `SELECT DISTINCT ON (direction_id) direction_id, trip_headsign, shape_id, trip_id
        FROM trips
-       WHERE route_id = $1
+       WHERE route_id = $1 AND feed_id = $2
        ORDER BY direction_id, trip_id`,
-      [routeId],
+      [routeId, feedId],
     );
 
     const directions = [];
@@ -256,8 +271,8 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
           shape_pt_lat: number;
           shape_pt_lon: number;
         }>(
-          'SELECT shape_pt_lat, shape_pt_lon FROM shapes WHERE shape_id = $1 ORDER BY shape_pt_sequence ASC',
-          [d.shape_id],
+          'SELECT shape_pt_lat, shape_pt_lon FROM shapes WHERE shape_id = $1 AND feed_id = $2 ORDER BY shape_pt_sequence ASC',
+          [d.shape_id, feedId],
         );
         dirShapes = shapeRes.rows.map((s) => [s.shape_pt_lat, s.shape_pt_lon]);
       }
@@ -275,10 +290,10 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
         }>(
           `SELECT s.stop_id, s.stop_name, s.stop_lat, s.stop_lon, st.stop_sequence, st.arrival_time, st.departure_time
            FROM stop_times st
-           JOIN stops s ON s.stop_id = st.stop_id
-           WHERE st.trip_id = $1
+           JOIN stops s ON s.feed_id = st.feed_id AND s.stop_id = st.stop_id
+           WHERE st.trip_id = $1 AND st.feed_id = $2
            ORDER BY st.stop_sequence ASC`,
-          [d.trip_id],
+          [d.trip_id, feedId],
         );
         dirStops = stopsRes.rows.map((s) => ({
           stopId: s.stop_id,
@@ -399,14 +414,15 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
       }>(
         `SELECT DISTINCT ON (t.trip_id) t.trip_id, t.direction_id, t.trip_headsign, st.departure_time
          FROM trips t
-         JOIN calendar c ON c.service_id = t.service_id
-         JOIN stop_times st ON st.trip_id = t.trip_id
+         JOIN calendar c ON c.feed_id = t.feed_id AND c.service_id = t.service_id
+         JOIN stop_times st ON st.feed_id = t.feed_id AND st.trip_id = t.trip_id
          WHERE t.route_id = $1
+           AND t.feed_id = $2
            AND c.${dayOfWeek} = 1
            AND c.start_date <= CURRENT_DATE
            AND c.end_date >= CURRENT_DATE
          ORDER BY t.trip_id, st.stop_sequence ASC`,
-        [routeId],
+        [routeId, feedId],
       );
 
       if (departuresRes.rows.length > 0) {
@@ -471,6 +487,7 @@ routesRouter.get('/routes/:routeId/timetable', async (req, res) => {
   const pool = req.app.locals['pool'] as Pool;
   const { routeId } = req.params;
   const { stopId, directionId: dirStr } = req.query;
+  const feedId = (req.query.feedId as string | undefined) || 'rapid-bus-kl';
   const directionId = dirStr !== undefined ? parseInt(String(dirStr), 10) : undefined;
 
   try {
@@ -481,15 +498,16 @@ routesRouter.get('/routes/:routeId/timetable', async (req, res) => {
     let query = `
       SELECT t.trip_id, t.direction_id, t.trip_headsign, st.departure_time, st.arrival_time, st.stop_sequence, s.stop_id, s.stop_name
       FROM trips t
-      JOIN calendar c ON c.service_id = t.service_id
-      JOIN stop_times st ON st.trip_id = t.trip_id
-      JOIN stops s ON s.stop_id = st.stop_id
+      JOIN calendar c ON c.feed_id = t.feed_id AND c.service_id = t.service_id
+      JOIN stop_times st ON st.feed_id = t.feed_id AND st.trip_id = t.trip_id
+      JOIN stops s ON s.feed_id = st.feed_id AND s.stop_id = st.stop_id
       WHERE t.route_id = $1
+        AND t.feed_id = $2
         AND c.${dayOfWeek} = 1
         AND c.start_date <= CURRENT_DATE
         AND c.end_date >= CURRENT_DATE
     `;
-    const params: unknown[] = [routeId];
+    const params: unknown[] = [routeId, feedId];
 
     if (stopId && typeof stopId === 'string') {
       params.push(stopId);
@@ -497,7 +515,7 @@ routesRouter.get('/routes/:routeId/timetable', async (req, res) => {
     } else {
       // Default to origin departure (min stop_sequence per trip)
       query += ` AND st.stop_sequence = (
-        SELECT MIN(st2.stop_sequence) FROM stop_times st2 WHERE st2.trip_id = t.trip_id
+        SELECT MIN(st2.stop_sequence) FROM stop_times st2 WHERE st2.feed_id = t.feed_id AND st2.trip_id = t.trip_id
       )`;
     }
 

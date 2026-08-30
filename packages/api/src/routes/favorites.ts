@@ -20,12 +20,13 @@ favoritesRouter.get('/favorites', async (_req, res) => {
   try {
     const result = await pool.query<{
       id: number;
+      feed_id: string;
       stop_id: string | null;
       route_id: string | null;
       label: string | null;
       created_at: string;
     }>(
-      `SELECT id, stop_id, route_id, label, created_at
+      `SELECT id, feed_id, stop_id, route_id, label, created_at
        FROM favorites
        WHERE device_id = $1
        ORDER BY created_at DESC`,
@@ -35,6 +36,7 @@ favoritesRouter.get('/favorites', async (_req, res) => {
     const response: FavoritesResponse = {
       favorites: result.rows.map((r) => ({
         id: r.id,
+        feedId: r.feed_id,
         stopId: r.stop_id,
         routeId: r.route_id,
         label: r.label,
@@ -59,23 +61,27 @@ favoritesRouter.post('/favorites', async (req, res) => {
     return;
   }
 
+  const feedId = body.feedId || 'rapid-bus-kl';
+
   try {
     const result = await pool.query<{
       id: number;
+      feed_id: string;
       stop_id: string | null;
       route_id: string | null;
       label: string | null;
       created_at: string;
     }>(
-      `INSERT INTO favorites (stop_id, route_id, label, device_id)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, stop_id, route_id, label, created_at`,
-      [body.stopId ?? null, body.routeId ?? null, body.label ?? null, deviceId],
+      `INSERT INTO favorites (feed_id, stop_id, route_id, label, device_id)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, feed_id, stop_id, route_id, label, created_at`,
+      [feedId, body.stopId ?? null, body.routeId ?? null, body.label ?? null, deviceId],
     );
 
     const row = result.rows[0]!;
     const favorite: Favorite = {
       id: row.id,
+      feedId: row.feed_id,
       stopId: row.stop_id,
       routeId: row.route_id,
       label: row.label,

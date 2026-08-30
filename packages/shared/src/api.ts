@@ -214,6 +214,7 @@ export const DEVICE_ID_HEADER = 'x-device-id' as const;
 
 export interface Favorite {
   id: number;
+  feedId?: string;
   stopId: string | null;
   routeId: string | null;
   /** User-defined label, e.g. "Home stop" or "Route T728" */
@@ -226,6 +227,7 @@ export interface FavoritesResponse {
 }
 
 export interface CreateFavoriteBody {
+  feedId?: string;
   stopId?: string;
   routeId?: string;
   label?: string;

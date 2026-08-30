@@ -264,6 +264,10 @@ describe('BasBuddy REST API (M4)', () => {
       expect(arrival.vehicle).toBeNull();
       expect(arrival.etaSeconds).toBeGreaterThanOrEqual(580);
       expect(arrival.etaSeconds).toBeLessThanOrEqual(620);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('feed_id = $2'),
+        ['SA1', 'rapid-bus-kl'],
+      );
     });
   });
 
@@ -356,6 +360,10 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.timetable.lastBusTime).toBe('23:00:00');
       expect(res.body.timetable.totalTripsToday).toBe(2);
       expect(res.body.timetable.allDepartures).toHaveLength(2);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('feed_id = $2'),
+        ['753', 'rapid-bus-kl'],
+      );
     });
 
     it('GET /api/routes/:routeId/timetable returns full timetable departures for a route', async () => {
@@ -391,6 +399,10 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.lastBusTime).toBe('08:00:00');
       expect(res.body.totalTripsToday).toBe(2);
       expect(res.body.allDepartures).toHaveLength(2);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('feed_id = $2'),
+        ['753', 'rapid-bus-kl', 0],
+      );
     });
   });
 
@@ -423,6 +435,10 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.stopName).toBe('Kompleks PKNS');
       expect(res.body.departures).toHaveLength(1);
       expect(res.body.departures[0].routeShortName).toBe('753');
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('feed_id = $2'),
+        ['SA1', 'rapid-bus-kl'],
+      );
     });
   });
 
@@ -582,14 +598,14 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.label).toBe('Work');
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO favorites'),
-        ['SA1', null, 'Work', testDeviceId],
+        ['rapid-bus-kl', 'SA1', null, 'Work', testDeviceId],
       );
     });
 
     it('POST /api/favorites creates route-only favorite and returns 201', async () => {
       mockPool.query.mockResolvedValueOnce({
         rows: [
-          { id: 43, stop_id: null, route_id: 'T7280', label: 'Route T728', created_at: '2026-08-22T10:00:00Z' },
+          { id: 43, feed_id: 'rapid-bus-kl', stop_id: null, route_id: 'T7280', label: 'Route T728', created_at: '2026-08-22T10:00:00Z' },
         ],
         rowCount: 1,
       });
@@ -606,7 +622,7 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.label).toBe('Route T728');
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO favorites'),
-        [null, 'T7280', 'Route T728', testDeviceId],
+        ['rapid-bus-kl', null, 'T7280', 'Route T728', testDeviceId],
       );
     });
 

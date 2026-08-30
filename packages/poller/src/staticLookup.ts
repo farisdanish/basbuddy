@@ -58,7 +58,10 @@ export interface StaticLookup {
  * Loads routes, stops, trips, shapes, and stop times from Postgres into memory.
  * This is a one-time startup cost — typically a few seconds for a full feed.
  */
-export async function loadStaticLookup(pool: Pool): Promise<StaticLookup> {
+export async function loadStaticLookup(
+  pool: Pool,
+  feedId: string = 'rapid-bus-kl',
+): Promise<StaticLookup> {
   const routes = new Map<string, RouteInfo>();
   const stops = new Map<string, StopInfo>();
   const trips = new Map<string, TripInfo>();
@@ -75,7 +78,7 @@ export async function loadStaticLookup(pool: Pool): Promise<StaticLookup> {
     route_short_name: string;
     route_long_name: string;
     route_color: string;
-  }>('SELECT route_id, route_short_name, route_long_name, route_color FROM routes');
+  }>('SELECT route_id, route_short_name, route_long_name, route_color FROM routes WHERE feed_id = $1', [feedId]);
 
   for (const row of routesResult.rows) {
     routes.set(row.route_id, {
@@ -91,7 +94,7 @@ export async function loadStaticLookup(pool: Pool): Promise<StaticLookup> {
     stop_name: string;
     stop_lat: number;
     stop_lon: number;
-  }>('SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops');
+  }>('SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops WHERE feed_id = $1', [feedId]);
 
   for (const row of stopsResult.rows) {
     stops.set(row.stop_id, {
@@ -108,7 +111,7 @@ export async function loadStaticLookup(pool: Pool): Promise<StaticLookup> {
     direction_id: number;
     shape_id: string;
     trip_headsign: string;
-  }>('SELECT trip_id, route_id, direction_id, shape_id, trip_headsign FROM trips');
+  }>('SELECT trip_id, route_id, direction_id, shape_id, trip_headsign FROM trips WHERE feed_id = $1', [feedId]);
 
   for (const row of tripsResult.rows) {
     trips.set(row.trip_id, {
@@ -125,7 +128,7 @@ export async function loadStaticLookup(pool: Pool): Promise<StaticLookup> {
     shape_pt_lat: number;
     shape_pt_lon: number;
     shape_pt_sequence: number;
-  }>('SELECT shape_id, shape_pt_lat, shape_pt_lon, shape_pt_sequence FROM shapes ORDER BY shape_id, shape_pt_sequence ASC');
+  }>('SELECT shape_id, shape_pt_lat, shape_pt_lon, shape_pt_sequence FROM shapes WHERE feed_id = $1 ORDER BY shape_id, shape_pt_sequence ASC', [feedId]);
 
   for (const row of shapesResult.rows) {
     if (!shapes.has(row.shape_id)) {
@@ -158,7 +161,7 @@ export async function loadStaticLookup(pool: Pool): Promise<StaticLookup> {
     trip_id: string;
     stop_id: string;
     stop_sequence: number;
-  }>('SELECT trip_id, stop_id, stop_sequence FROM stop_times ORDER BY trip_id, stop_sequence ASC');
+  }>('SELECT trip_id, stop_id, stop_sequence FROM stop_times WHERE feed_id = $1 ORDER BY trip_id, stop_sequence ASC', [feedId]);
 
   for (const row of stopTimesResult.rows) {
     stopSequences.set(`${row.trip_id}|${row.stop_id}`, row.stop_sequence);

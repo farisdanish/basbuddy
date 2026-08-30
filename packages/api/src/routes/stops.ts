@@ -19,18 +19,26 @@ export const stopsRouter = Router();
 stopsRouter.get('/stops', async (req, res) => {
   const pool = req.app.locals['pool'] as Pool;
   const { near, radiusMeters: radiusStr, limit: limitStr } = req.query;
+  const feedId = req.query.feedId as string | undefined;
 
   if (!near || typeof near !== 'string') {
     // Return all stops (unscoped) if no ?near param — useful for search.
     // Note: LIMIT 500 is an intentional v1 constraint for RapidKL bus search.
     // Future multi-modal stop additions can expand this with cursor pagination.
     try {
-      const result = await pool.query<{
-        stop_id: string;
-        stop_name: string;
-        stop_lat: number;
-        stop_lon: number;
-      }>('SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops ORDER BY stop_name LIMIT 500');
+      const result = feedId
+        ? await pool.query<{
+            stop_id: string;
+            stop_name: string;
+            stop_lat: number;
+            stop_lon: number;
+          }>('SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops WHERE feed_id = $1 ORDER BY stop_name LIMIT 500', [feedId])
+        : await pool.query<{
+            stop_id: string;
+            stop_name: string;
+            stop_lat: number;
+            stop_lon: number;
+          }>('SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops ORDER BY stop_name LIMIT 500');
 
       const response: AllStopsResponse = {
         stops: result.rows.map((r) => ({
@@ -64,16 +72,21 @@ stopsRouter.get('/stops', async (req, res) => {
     const latDelta = radiusMeters / 111_320;
     const lonDelta = radiusMeters / (111_320 * Math.cos((lat * Math.PI) / 180));
 
+    const params: unknown[] = [lat - latDelta, lat + latDelta, lon - lonDelta, lon + lonDelta];
+    let query = `SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops
+       WHERE stop_lat BETWEEN $1 AND $2 AND stop_lon BETWEEN $3 AND $4`;
+
+    if (feedId) {
+      params.push(feedId);
+      query += ` AND feed_id = $${params.length}`;
+    }
+
     const result = await pool.query<{
       stop_id: string;
       stop_name: string;
       stop_lat: number;
       stop_lon: number;
-    }>(
-      `SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops
-       WHERE stop_lat BETWEEN $1 AND $2 AND stop_lon BETWEEN $3 AND $4`,
-      [lat - latDelta, lat + latDelta, lon - lonDelta, lon + lonDelta],
-    );
+    }>(query, params);
 
     // Haversine sort + radius filter in application code
     const withDist = result.rows
@@ -103,12 +116,13 @@ stopsRouter.get('/stops/:stopId/etas', async (req, res) => {
   const valkey = req.app.locals['valkey'] as Redis;
   const pool = req.app.locals['pool'] as Pool;
   const { stopId } = req.params;
+  const feedId = (req.query.feedId as string | undefined) || 'rapid-bus-kl';
 
   try {
     // ── Check stop exists ─────────────────────────────────────────────────────
     const stopResult = await pool.query<{ stop_id: string; stop_name: string }>(
-      'SELECT stop_id, stop_name FROM stops WHERE stop_id = $1',
-      [stopId],
+      'SELECT stop_id, stop_name FROM stops WHERE stop_id = $1 AND feed_id = $2',
+      [stopId, feedId],
     );
     if (stopResult.rows.length === 0) {
       res.status(404).json({ error: 'stop_not_found' });
@@ -146,16 +160,17 @@ stopsRouter.get('/stops/:stopId/etas', async (req, res) => {
     }>(
       `SELECT st.trip_id, t.route_id, r.route_short_name, t.trip_headsign, st.arrival_time
        FROM stop_times st
-       JOIN trips t ON t.trip_id = st.trip_id
-       JOIN routes r ON r.route_id = t.route_id
-       JOIN calendar c ON c.service_id = t.service_id
+       JOIN trips t ON t.feed_id = st.feed_id AND t.trip_id = st.trip_id
+       JOIN routes r ON r.feed_id = t.feed_id AND r.route_id = t.route_id
+       JOIN calendar c ON c.feed_id = t.feed_id AND c.service_id = t.service_id
        WHERE st.stop_id = $1
+         AND st.feed_id = $2
          AND c.${dayOfWeek} = 1
          AND c.start_date <= CURRENT_DATE
          AND c.end_date >= CURRENT_DATE
        ORDER BY st.arrival_time
        LIMIT 20`,
-      [stopId],
+      [stopId, feedId],
     );
 
     const arrivals: StopArrival[] = [];
@@ -201,11 +216,12 @@ stopsRouter.get('/stops/:stopId/etas', async (req, res) => {
 stopsRouter.get('/stops/:stopId/timetable', async (req, res) => {
   const pool = req.app.locals['pool'] as Pool;
   const { stopId } = req.params;
+  const feedId = (req.query.feedId as string | undefined) || 'rapid-bus-kl';
 
   try {
     const stopResult = await pool.query<{ stop_id: string; stop_name: string }>(
-      'SELECT stop_id, stop_name FROM stops WHERE stop_id = $1',
-      [stopId],
+      'SELECT stop_id, stop_name FROM stops WHERE stop_id = $1 AND feed_id = $2',
+      [stopId, feedId],
     );
     if (stopResult.rows.length === 0) {
       res.status(404).json({ error: 'stop_not_found' });
@@ -226,15 +242,16 @@ stopsRouter.get('/stops/:stopId/timetable', async (req, res) => {
     }>(
       `SELECT st.trip_id, t.route_id, r.route_short_name, t.trip_headsign, st.departure_time, t.direction_id
        FROM stop_times st
-       JOIN trips t ON t.trip_id = st.trip_id
-       JOIN routes r ON r.route_id = t.route_id
-       JOIN calendar c ON c.service_id = t.service_id
+       JOIN trips t ON t.feed_id = st.feed_id AND t.trip_id = st.trip_id
+       JOIN routes r ON r.feed_id = t.feed_id AND r.route_id = t.route_id
+       JOIN calendar c ON c.feed_id = t.feed_id AND c.service_id = t.service_id
        WHERE st.stop_id = $1
+         AND st.feed_id = $2
          AND c.${dayOfWeek} = 1
          AND c.start_date <= CURRENT_DATE
          AND c.end_date >= CURRENT_DATE
        ORDER BY st.departure_time ASC`,
-      [stopId],
+      [stopId, feedId],
     );
 
     const departures = scheduleResult.rows.map((row) => ({
