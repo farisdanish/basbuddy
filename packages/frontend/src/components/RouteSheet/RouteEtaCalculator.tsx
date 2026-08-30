@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ArrowUpDown, Clock, Radio, Sparkles } from 'lucide-react';
 import type { RouteStopItem, LiveVehicle } from '@basbuddy/shared';
+import { Combobox } from '../Combobox/Combobox.tsx';
 
 interface RouteEtaCalculatorProps {
   stops: RouteStopItem[];
@@ -60,6 +61,16 @@ export function RouteEtaCalculator({
   const originStop = stops[originIndex];
   const destStop = stops[destIndex];
 
+  const originStopOption = useMemo(
+    () => stops.find((s) => s.stopId === originStopId) ?? null,
+    [stops, originStopId],
+  );
+
+  const destStopOption = useMemo(
+    () => stops.find((s) => s.stopId === destStopId) ?? null,
+    [stops, destStopId],
+  );
+
   const isValidTrip = originIndex !== -1 && destIndex !== -1 && destIndex > originIndex;
   const stopsCount = isValidTrip ? destIndex - originIndex : 0;
 
@@ -109,16 +120,10 @@ export function RouteEtaCalculator({
 
       if (vStopIndex !== -1 && vStopIndex <= originIndex) {
         const stopsAway = originIndex - vStopIndex;
-        // Estimate ETA to origin
-        let distToOrigin = 0;
-        for (let i = vStopIndex; i < originIndex; i++) {
-          const s1 = stops[i]!;
-          const s2 = stops[i + 1]!;
-          distToOrigin += haversineMeters(s1.lat, s1.lon, s2.lat, s2.lon);
-        }
-        const etaMinutes = Math.max(1, Math.round((distToOrigin / (22 * 1000)) * 60 + stopsAway * 0.5));
+        // Estimate 1.5 min per stop distance
+        const etaMinutes = Math.max(1, Math.round(stopsAway * 1.8));
 
-        if (!bestMatch || etaMinutes < bestMatch.etaMinutes) {
+        if (!bestMatch || stopsAway < bestMatch.stopsAway) {
           bestMatch = { vehicle: v, stopsAway, etaMinutes };
         }
       }
@@ -165,42 +170,66 @@ export function RouteEtaCalculator({
 
         {/* Boarding Stop (From) */}
         <div>
-          <label htmlFor="origin-stop-select" className="text-[11px] font-sans font-medium text-[#FFF8EE]/60 flex items-center gap-1 mb-1">
+          <label className="text-[11px] font-sans font-medium text-[#FFF8EE]/60 flex items-center gap-1 mb-1">
             <span className="w-2 h-2 rounded-full bg-[#1F7A6C]" />
             <span>Boarding Stop (From)</span>
           </label>
-          <select
-            id="origin-stop-select"
-            value={originStopId}
-            onChange={(e) => setOriginStopId(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-[#101B2D] border border-white/15 text-xs text-[#FFF8EE] font-sans focus:outline-none focus:border-[#F4A100] focus:ring-1 focus:ring-[#F4A100] transition-all"
-          >
-            {stops.map((stop, idx) => (
-              <option key={stop.stopId} value={stop.stopId}>
-                #{idx + 1} {stop.stopName} ({stop.stopId})
-              </option>
-            ))}
-          </select>
+          <Combobox<RouteStopItem>
+            options={stops}
+            value={originStopOption}
+            onChange={(stop) => setOriginStopId(stop.stopId)}
+            getOptionKey={(stop) => stop.stopId}
+            getOptionLabel={(stop) => {
+              const idx = stops.findIndex((s) => s.stopId === stop.stopId);
+              return `#${idx + 1} ${stop.stopName} (${stop.stopId})`;
+            }}
+            renderOption={(stop) => {
+              const idx = stops.findIndex((s) => s.stopId === stop.stopId);
+              return (
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full bg-white/10 text-[9px] font-mono text-[#F4A100] flex items-center justify-center font-bold shrink-0">
+                    {idx + 1}
+                  </span>
+                  <span className="truncate">{stop.stopName}</span>
+                  <span className="text-[10px] font-mono text-[#FFF8EE]/40">({stop.stopId})</span>
+                </div>
+              );
+            }}
+            ariaLabel="Boarding Stop"
+            placeholder="Search boarding stop..."
+          />
         </div>
 
         {/* Alighting Stop (To) */}
         <div>
-          <label htmlFor="dest-stop-select" className="text-[11px] font-sans font-medium text-[#FFF8EE]/60 flex items-center gap-1 mb-1">
+          <label className="text-[11px] font-sans font-medium text-[#FFF8EE]/60 flex items-center gap-1 mb-1">
             <span className="w-2 h-2 rounded-full bg-[#FF5A47]" />
             <span>Alighting Stop (To)</span>
           </label>
-          <select
-            id="dest-stop-select"
-            value={destStopId}
-            onChange={(e) => setDestStopId(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-[#101B2D] border border-white/15 text-xs text-[#FFF8EE] font-sans focus:outline-none focus:border-[#F4A100] focus:ring-1 focus:ring-[#F4A100] transition-all"
-          >
-            {stops.map((stop, idx) => (
-              <option key={stop.stopId} value={stop.stopId}>
-                #{idx + 1} {stop.stopName} ({stop.stopId})
-              </option>
-            ))}
-          </select>
+          <Combobox<RouteStopItem>
+            options={stops}
+            value={destStopOption}
+            onChange={(stop) => setDestStopId(stop.stopId)}
+            getOptionKey={(stop) => stop.stopId}
+            getOptionLabel={(stop) => {
+              const idx = stops.findIndex((s) => s.stopId === stop.stopId);
+              return `#${idx + 1} ${stop.stopName} (${stop.stopId})`;
+            }}
+            renderOption={(stop) => {
+              const idx = stops.findIndex((s) => s.stopId === stop.stopId);
+              return (
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full bg-white/10 text-[9px] font-mono text-[#F4A100] flex items-center justify-center font-bold shrink-0">
+                    {idx + 1}
+                  </span>
+                  <span className="truncate">{stop.stopName}</span>
+                  <span className="text-[10px] font-mono text-[#FFF8EE]/40">({stop.stopId})</span>
+                </div>
+              );
+            }}
+            ariaLabel="Alighting Stop"
+            placeholder="Search alighting stop..."
+          />
         </div>
       </div>
 
