@@ -22,7 +22,10 @@ import { RouteTrackerSheet } from './components/RouteSheet/RouteTrackerSheet.tsx
 
 import { StopSheet } from './components/StopSheet/StopSheet.tsx';
 import { FavoritesList } from './components/FavoritesList/FavoritesList.tsx';
+import { FavoritesModal } from './components/FavoritesList/FavoritesModal.tsx';
 import { InfoModal, type InfoTabType } from './components/Info/InfoModal.tsx';
+import { NavigationDrawer } from './components/NavigationDrawer/NavigationDrawer.tsx';
+import type { TransitHub } from './utils/transitHubs.ts';
 
 // ── Time-of-day gradient (§11 signature element) ──────────────────────────────
 function getTimeGradientClass(hour: number): string {
@@ -82,6 +85,9 @@ export default function App() {
   });
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [favoritesModalOpen, setFavoritesModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedAgencyId, setSelectedAgencyId] = useState('all');
   const [infoModalTab, setInfoModalTab] = useState<InfoTabType | null>(null);
 
   const { stops } = useNearbyStops(mapCenter[0], mapCenter[1]);
@@ -98,6 +104,13 @@ export default function App() {
 
   const handleSelectRoute = useCallback((routeId: string) => {
     setSelectedRouteId(routeId);
+  }, []);
+
+  const handleSelectHub = useCallback((hub: TransitHub) => {
+    setMapCenter([hub.lat, hub.lon]);
+    if (window.__leafletMap) {
+      smoothFlyTo(window.__leafletMap, [hub.lat, hub.lon], 15, 1.2, true);
+    }
   }, []);
 
   const handleResetView = useCallback(() => {
@@ -152,6 +165,7 @@ export default function App() {
       <SearchHeader
         onOpenSearch={() => setSearchOpen(true)}
         onOpenInfo={() => setInfoModalTab('about')}
+        onOpenDrawer={() => setDrawerOpen(true)}
         onResetView={handleResetView}
         systemStatus={health.status}
       />
@@ -170,6 +184,17 @@ export default function App() {
       {/* ── Stale / Degraded Feed Warning Banner ─────────────────────────────── */}
       {!selectedRouteId && <DegradedBanner health={health} />}
 
+      {/* ── Navigation Drawer & Hubs Directory ──────────────────────────────── */}
+      <NavigationDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        selectedAgencyId={selectedAgencyId}
+        onSelectAgency={setSelectedAgencyId}
+        onSelectHub={handleSelectHub}
+        onOpenFavorites={() => setFavoritesModalOpen(true)}
+        onOpenAbout={() => setInfoModalTab('about')}
+      />
+
       {/* ── Search Modal Overlay ────────────────────────────────────────────── */}
       <SearchOverlay
         isOpen={searchOpen}
@@ -186,6 +211,7 @@ export default function App() {
           selectedRouteId={selectedRouteId}
           onSelectStop={handleSelectStop}
           onSelectRoute={handleSelectRoute}
+          onOpenModal={() => setFavoritesModalOpen(true)}
         />
       </div>
 
@@ -194,6 +220,16 @@ export default function App() {
         stopId={selectedStopId}
         onClose={() => setSelectedStopId(null)}
         onSelectRoute={handleSelectRoute}
+      />
+
+      {/* ── Favorites Manager Modal Dialog ──────────────────────────────────── */}
+      <FavoritesModal
+        isOpen={favoritesModalOpen}
+        onClose={() => setFavoritesModalOpen(false)}
+        onSelectStop={handleSelectStop}
+        onSelectRoute={handleSelectRoute}
+        selectedStopId={selectedStopId}
+        selectedRouteId={selectedRouteId}
       />
 
       {/* ── Info / FAQ / Feedback Modal Dialog ──────────────────────────────── */}
