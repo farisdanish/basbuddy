@@ -17,6 +17,18 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'mobile-chrome',
+      // Chromium explicitly (not an iOS/webkit preset — webkit isn't installed in
+      // every environment this suite runs in). Viewport matches the 390x844
+      // dimensions already used ad hoc in tracking.spec.ts's mobile-viewport test,
+      // so both stay in sync with the same reference device.
+      use: {
+        ...devices['Pixel 7'],
+        browserName: 'chromium',
+        viewport: { width: 390, height: 844 },
+      },
+    },
   ],
   webServer: {
     command: 'npm run preview -- --port 4173',
