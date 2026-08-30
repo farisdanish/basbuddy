@@ -198,7 +198,24 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
           routeShortName: routeId === 'T7280' ? 'T728' : routeId,
           routeLongName: routeId === 'T7280' ? 'Stesen LRT Pasar Klang ~ Setia City' : 'Pasar Seni - Seksyen 2 Shah Alam',
           routeColor: 'F4A100',
-          directions: [{ directionId: 0, tripHeadsign: 'Seksyen 2 Shah Alam' }],
+          directions: [
+            {
+              directionId: 0,
+              tripHeadsign: 'Seksyen 2 Shah Alam',
+              stops: [
+                { stopId: 'KL1081', stopName: 'Pasar Seni Platform B', lat: 3.1425, lon: 101.696, stopSequence: 1 },
+                { stopId: 'KL1092', stopName: 'Mid Valley North Court', lat: 3.118, lon: 101.677, stopSequence: 2 },
+              ],
+            },
+            {
+              directionId: 1,
+              tripHeadsign: 'Hab Pasar Seni',
+              stops: [
+                { stopId: 'SA001', stopName: 'Seksyen 2 Shah Alam', lat: 3.072, lon: 101.518, stopSequence: 1 },
+                { stopId: 'KL1081', stopName: 'Pasar Seni Platform B', lat: 3.1425, lon: 101.696, stopSequence: 2 },
+              ],
+            },
+          ],
           shapes: [
             [3.1425, 101.696],
             [3.118, 101.677],
@@ -217,6 +234,18 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
               bearing: 270,
               timestamp: new Date().toISOString(),
               freshness: 'live',
+              nearestStopId: 'KL1092',
+            },
+            {
+              tripId: `TRIP-${routeId}-2`,
+              routeId,
+              lat: 3.072,
+              lon: 101.518,
+              bearing: 90,
+              timestamp: new Date().toISOString(),
+              freshness: 'live',
+              nearestStopId: 'SA001',
+              directionId: 1,
             },
           ],
           timetable: {
@@ -334,7 +363,7 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     await expect(routeInspector).toBeVisible({ timeout: 5000 });
     await expect(routeInspector).toContainText('750');
     await expect(routeInspector).toContainText('Pasar Seni - Seksyen 2 Shah Alam');
-    await expect(routeInspector).toContainText('1 bus live');
+    await expect(routeInspector).toContainText('2 buses live');
 
     // Verify stops are rendered in the route inspector list
     await expect(routeInspector).toContainText('Pasar Seni Platform B');
@@ -358,11 +387,30 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     await expect(timetableDialog).toContainText('750');
 
     // Verify Stop Timeline tab & stops
-    await expect(timetableDialog.getByRole('button', { name: /Stop Timeline & ETAs/i })).toBeVisible();
+    await expect(timetableDialog.getByRole('button', { name: /Timeline/i })).toBeVisible();
     await expect(timetableDialog).toContainText('Pasar Seni Platform B');
 
+    // Switch to Live Buses tab & verify active fleet vehicle card
+    const vehiclesTabBtn = timetableDialog.getByRole('button', { name: /Live Buses/i });
+    await expect(vehiclesTabBtn).toBeVisible();
+    await vehiclesTabBtn.click();
+    const vehiclesTab = timetableDialog.getByTestId('route-vehicles-tab');
+    await expect(vehiclesTab).toBeVisible();
+
+    // Default "This Direction Only" view shows direction 0 vehicle with its headsign
+    await expect(vehiclesTab.getByTestId('vehicle-card-TRIP-750-1')).toContainText('Seksyen 2 Shah Alam');
+
+    // Toggle to "All Buses" view
+    const allBusesToggle = vehiclesTab.getByRole('button', { name: /All Buses/i });
+    await expect(allBusesToggle).toBeVisible();
+    await allBusesToggle.click();
+
+    // Verify both vehicles are visible with their respective true direction headsigns
+    await expect(vehiclesTab.getByTestId('vehicle-card-TRIP-750-1')).toContainText('Seksyen 2 Shah Alam');
+    await expect(vehiclesTab.getByTestId('vehicle-card-TRIP-750-2')).toContainText('Hab Pasar Seni');
+
     // Switch to Daily Schedule tab
-    const scheduleTabBtn = timetableDialog.getByRole('button', { name: /Daily Schedule/i });
+    const scheduleTabBtn = timetableDialog.getByRole('button', { name: /Schedule/i });
     await scheduleTabBtn.click();
     await expect(timetableDialog).toContainText(/Morning|Afternoon|Evening|First Bus/i);
 
@@ -431,7 +479,7 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     const expandBtn = page.getByRole('button', { name: 'Expand route details' });
     await expect(expandBtn).toBeVisible();
     await expect(expandBtn).toContainText('750');
-    await expect(expandBtn).toContainText('1 live');
+    await expect(expandBtn).toContainText('2 live');
 
     // Tap expand button to restore full route card
     await expandBtn.click();

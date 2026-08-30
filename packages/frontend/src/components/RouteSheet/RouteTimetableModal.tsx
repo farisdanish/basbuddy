@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Calendar, Info, Radio, Sparkles, ArrowRight, Bus, ChevronDown, Check } from 'lucide-react';
 import type { RouteDetailsResponse, RouteStopItem } from '@basbuddy/shared';
 import { RouteEtaCalculator } from './RouteEtaCalculator.tsx';
+import { RouteVehiclesTab } from './RouteVehiclesTab.tsx';
+import { updateDwellTracker, type DwellRecord } from '../../utils/vehicleStatus.ts';
 import { useCompanionDocking } from '../../hooks/useCompanionDocking.ts';
 
 interface RouteTimetableModalProps {
@@ -13,7 +15,7 @@ interface RouteTimetableModalProps {
   initialDirectionIndex?: number;
 }
 
-type TimetableTab = 'timeline' | 'schedule' | 'calculator';
+type TimetableTab = 'timeline' | 'vehicles' | 'schedule' | 'calculator';
 
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
@@ -127,6 +129,12 @@ export function RouteTimetableModal({
   const timetable = routeData.timetable;
   const allDepartures = timetable?.allDepartures ?? [];
   const vehicles = routeData.vehicles ?? [];
+
+  // Scoped client-side dwell observation tracker (single source of truth)
+  const dwellMapRef = useRef<Map<string, DwellRecord>>(new Map());
+  const dwellMinutesMap = useMemo(() => {
+    return updateDwellTracker(dwellMapRef.current, routeData.routeId, vehicles);
+  }, [routeData.routeId, vehicles]);
 
   // Filter departures for the active direction
   const dirDepartures = useMemo(() => {
@@ -364,8 +372,32 @@ export function RouteTimetableModal({
                 : 'text-[#FFF8EE]/70 hover:bg-white/5 hover:text-[#FFF8EE]'
             }`}
           >
-            <Radio className="w-3.5 h-3.5" />
-            <span>Stop Timeline & ETAs</span>
+            <Radio className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Timeline</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('vehicles')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-sans font-semibold transition-all ${
+              activeTab === 'vehicles'
+                ? 'bg-[#F4A100] text-[#101B2D] shadow-md'
+                : 'text-[#FFF8EE]/70 hover:bg-white/5 hover:text-[#FFF8EE]'
+            }`}
+          >
+            <Bus className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Live Buses</span>
+            {vehicles.length > 0 && (
+              <span
+                className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                  activeTab === 'vehicles'
+                    ? 'bg-[#101B2D] text-[#F4A100]'
+                    : 'bg-[#1F7A6C] text-[#FFF8EE]'
+                }`}
+              >
+                {vehicles.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -377,8 +409,8 @@ export function RouteTimetableModal({
                 : 'text-[#FFF8EE]/70 hover:bg-white/5 hover:text-[#FFF8EE]'
             }`}
           >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Daily Schedule</span>
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Schedule</span>
           </button>
 
           <button
@@ -390,8 +422,8 @@ export function RouteTimetableModal({
                 : 'text-[#FFF8EE]/70 hover:bg-white/5 hover:text-[#FFF8EE]'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Trip Calc</span>
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Trip Calc</span>
           </button>
         </div>
 
@@ -596,6 +628,20 @@ export function RouteTimetableModal({
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Tab: Live Buses & Fleet Status */}
+        {activeTab === 'vehicles' && (
+          <div className="flex-1 overflow-y-auto p-3.5 basbuddy-scroll min-h-0">
+            <RouteVehiclesTab
+              routeData={routeData}
+              activeDirectionIndex={activeDirectionIndex}
+              activeStops={activeStops}
+              dwellMinutesMap={dwellMinutesMap}
+              onSelectStop={onSelectStop}
+              onSwitchTab={(tab) => setActiveTab(tab)}
+            />
           </div>
         )}
 
