@@ -395,6 +395,8 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
           freshness,
           nearestStopId,
           nextStopId,
+          directionId: vc.directionId !== undefined && vc.directionId !== null ? vc.directionId : null,
+          speedKmh: vc.speedKmh !== undefined && vc.speedKmh !== null ? vc.speedKmh : null,
         });
       }
     }
@@ -613,6 +615,8 @@ routesRouter.get('/routes/:routeId/vehicles', async (req, res) => {
           bearing: vc.bearing,
           timestamp: vc.timestamp,
           freshness,
+          directionId: vc.directionId !== undefined && vc.directionId !== null ? vc.directionId : null,
+          speedKmh: vc.speedKmh !== undefined && vc.speedKmh !== null ? vc.speedKmh : null,
         });
       }
     }

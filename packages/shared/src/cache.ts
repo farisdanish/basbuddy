@@ -69,6 +69,8 @@ export interface VehiclePositionCache {
    * NOT the poller's wall clock. Used for freshness checks.
    */
   timestamp: string;
+  /** Speed in km/h (converted from GTFS-RT m/s * 3.6), or null if absent/invalid. */
+  speedKmh?: number | null;
 }
 
 // ── Re-export StopEtasResponse for the poller ─────────────────────────────────

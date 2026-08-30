@@ -81,6 +81,9 @@ export function VehicleMarkersLayer({
               {vehicle.bearing !== null && (
                 <span className="block text-[10px] text-gray-600">Heading: {Math.round(vehicle.bearing)}°</span>
               )}
+              {vehicle.speedKmh !== null && vehicle.speedKmh !== undefined && (
+                <span className="block text-[10px] text-gray-600">Speed: {Math.round(vehicle.speedKmh)} km/h</span>
+              )}
             </div>
           </Tooltip>
         </Marker>

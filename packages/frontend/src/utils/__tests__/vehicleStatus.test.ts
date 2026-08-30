@@ -11,7 +11,7 @@ import {
 
 describe('vehicleStatus utilities', () => {
   describe('getVehicleMovementState', () => {
-    it('returns "in_transit" when dwell minutes is 0', () => {
+    it('returns "in_transit" when dwell minutes is 0 and speed is not specified', () => {
       const state = getVehicleMovementState(0);
       expect(state.status).toBe('in_transit');
       expect(state.label).toBe('En Route');
@@ -33,6 +33,42 @@ describe('vehicleStatus utilities', () => {
       expect(state.status).toBe('holding_dwell');
       expect(state.label).toBe('Holding / Dwell (~12m)');
       expect(state.badgeClass).toContain('text-amber-300');
+    });
+
+    it('evaluates speed telemetry tiers when not dwelling', () => {
+      // Cruising speed (>= 35 km/h)
+      const cruising = getVehicleMovementState(0, 48.2);
+      expect(cruising.status).toBe('cruising');
+      expect(cruising.label).toBe('Cruising (48 km/h)');
+      expect(cruising.badgeClass).toContain('text-emerald-300');
+
+      // Slow traffic (0 < speed < 15 km/h)
+      const slow = getVehicleMovementState(0, 8.4);
+      expect(slow.status).toBe('slow_traffic');
+      expect(slow.label).toBe('Slow Traffic (8 km/h)');
+      expect(slow.badgeClass).toContain('text-orange-300');
+
+      // Normal in transit (15 <= speed < 35 km/h)
+      const enRoute = getVehicleMovementState(0, 26.0);
+      expect(enRoute.status).toBe('in_transit');
+      expect(enRoute.label).toBe('En Route (26 km/h)');
+
+      // Stationary (0 km/h)
+      const stationary = getVehicleMovementState(0, 0);
+      expect(stationary.status).toBe('at_stop');
+      expect(stationary.label).toBe('Stationary (0 km/h)');
+    });
+
+    it('dwell time takes precedence over speed telemetry', () => {
+      // Dwell >= 10 min overrides speed
+      const dwellState = getVehicleMovementState(15, 40);
+      expect(dwellState.status).toBe('holding_dwell');
+      expect(dwellState.label).toContain('Holding / Dwell');
+
+      // Dwell > 0 min overrides speed
+      const atStopState = getVehicleMovementState(2, 20);
+      expect(atStopState.status).toBe('at_stop');
+      expect(atStopState.label).toBe('At Stop');
     });
   });
 

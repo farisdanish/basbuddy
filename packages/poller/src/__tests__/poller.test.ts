@@ -88,6 +88,58 @@ describe('GTFS-RT Poller & ETA Engine', () => {
       expect(entityJB.lat).toBeCloseTo(1.4927, 4);
       expect(entityJB.lon).toBeCloseTo(103.7414, 4);
     });
+
+    it('decodes vehicle speed (m/s) and converts to km/h, ignoring invalid or negative speeds', () => {
+      const feed = transit_realtime.FeedMessage.create({
+        header: {
+          gtfsRealtimeVersion: '2.0',
+          timestamp: 1700000000,
+        },
+        entity: [
+          // Vehicle with 10 m/s speed (36 km/h)
+          {
+            id: 'veh_speed_1',
+            vehicle: {
+              trip: { tripId: 'trip_spd_1', routeId: '750' },
+              position: { latitude: 3.14, longitude: 101.69, speed: 10 },
+            },
+          },
+          // Vehicle with 0 m/s speed (0 km/h)
+          {
+            id: 'veh_speed_2',
+            vehicle: {
+              trip: { tripId: 'trip_spd_2', routeId: '750' },
+              position: { latitude: 3.14, longitude: 101.69, speed: 0 },
+            },
+          },
+          // Vehicle with negative speed (invalid GPS)
+          {
+            id: 'veh_speed_3',
+            vehicle: {
+              trip: { tripId: 'trip_spd_3', routeId: '750' },
+              position: { latitude: 3.14, longitude: 101.69, speed: -2.5 },
+            },
+          },
+          // Vehicle with omitted speed
+          {
+            id: 'veh_speed_4',
+            vehicle: {
+              trip: { tripId: 'trip_spd_4', routeId: '750' },
+              position: { latitude: 3.14, longitude: 101.69 },
+            },
+          },
+        ],
+      });
+
+      const buffer = Buffer.from(transit_realtime.FeedMessage.encode(feed).finish());
+      const decoded = decodeRealtimeFeed(buffer);
+
+      expect(decoded).toHaveLength(4);
+      expect(decoded[0]?.speedKmh).toBe(36);
+      expect(decoded[1]?.speedKmh).toBe(0);
+      expect(decoded[2]?.speedKmh).toBeNull();
+      expect(decoded[3]?.speedKmh).toBeNull();
+    });
   });
 
   describe('matcher & bearing disambiguation', () => {
@@ -168,6 +220,7 @@ describe('GTFS-RT Poller & ETA Engine', () => {
           lon: 101.5100,
           bearing: 0,
           gtfsTimestamp: null,
+          speedKmh: null,
         },
         mockLookup,
       );
@@ -187,6 +240,7 @@ describe('GTFS-RT Poller & ETA Engine', () => {
           lon: 101.5100,
           bearing: null,
           gtfsTimestamp: null,
+          speedKmh: null,
         },
         mockLookup,
       );
@@ -203,6 +257,7 @@ describe('GTFS-RT Poller & ETA Engine', () => {
           lon: 101.5100,
           bearing: 0,
           gtfsTimestamp: null,
+          speedKmh: null,
         },
         mockLookup,
       );
@@ -222,6 +277,7 @@ describe('GTFS-RT Poller & ETA Engine', () => {
           lon: 101.5100,
           bearing: 0,
           gtfsTimestamp: null,
+          speedKmh: null,
         },
         mockLookup,
       );
@@ -242,6 +298,7 @@ describe('GTFS-RT Poller & ETA Engine', () => {
           lon: 101.5100,
           bearing: 5, // Close to 0°
           gtfsTimestamp: null,
+          speedKmh: null,
         },
         mockLookup,
       );
@@ -258,6 +315,7 @@ describe('GTFS-RT Poller & ETA Engine', () => {
           lon: 101.5100,
           bearing: 185,
           gtfsTimestamp: null,
+          speedKmh: null,
         },
         mockLookup,
       );
@@ -319,6 +377,7 @@ describe('GTFS-RT Poller & ETA Engine', () => {
           lon: 101.00,
           bearing: null,
           gtfsTimestamp: null,
+          speedKmh: null,
         },
         shapeId: 's1',
         tripId: 'trip_1',

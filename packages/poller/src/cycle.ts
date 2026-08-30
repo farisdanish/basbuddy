@@ -66,6 +66,7 @@ export async function runPollCycle(opts: CycleOptions): Promise<void> {
       lat: entity.lat,
       lon: entity.lon,
       bearing: entity.bearing,
+      speedKmh: entity.speedKmh,
       timestamp: entity.gtfsTimestamp
         ? new Date(entity.gtfsTimestamp * 1000).toISOString()
         : generatedAt,

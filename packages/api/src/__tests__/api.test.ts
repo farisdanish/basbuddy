@@ -456,9 +456,11 @@ describe('BasBuddy REST API (M4)', () => {
         JSON.stringify({
           tripId: 'T_LIVE',
           routeId: '753',
+          directionId: 0,
           lat: 3.14,
           lon: 101.69,
           bearing: 90,
+          speedKmh: 42.5,
           timestamp: new Date(now - 30 * 1000).toISOString(), // 30s ago -> live
         }),
       );
@@ -468,9 +470,11 @@ describe('BasBuddy REST API (M4)', () => {
         JSON.stringify({
           tripId: 'T_STALE',
           routeId: '753',
+          directionId: 1,
           lat: 3.15,
           lon: 101.70,
           bearing: 180,
+          speedKmh: 12.0,
           timestamp: new Date(now - 150 * 1000).toISOString(), // 150s ago -> stale
         }),
       );
@@ -480,9 +484,11 @@ describe('BasBuddy REST API (M4)', () => {
         JSON.stringify({
           tripId: 'T_LOST',
           routeId: '753',
+          directionId: 0,
           lat: 3.16,
           lon: 101.71,
           bearing: 270,
+          speedKmh: null,
           timestamp: new Date(now - 300 * 1000).toISOString(), // 300s ago -> signal_lost
         }),
       );
@@ -497,8 +503,16 @@ describe('BasBuddy REST API (M4)', () => {
       const lostVeh = res.body.vehicles.find((v: any) => v.tripId === 'T_LOST');
 
       expect(liveVeh.freshness).toBe('live');
+      expect(liveVeh.directionId).toBe(0);
+      expect(liveVeh.speedKmh).toBe(42.5);
+
       expect(staleVeh.freshness).toBe('stale');
+      expect(staleVeh.directionId).toBe(1);
+      expect(staleVeh.speedKmh).toBe(12.0);
+
       expect(lostVeh.freshness).toBe('signal_lost');
+      expect(lostVeh.directionId).toBe(0);
+      expect(lostVeh.speedKmh).toBeNull();
     });
 
     it('marks all vehicles as signal_lost when poller heartbeat is stale (> 90s)', async () => {

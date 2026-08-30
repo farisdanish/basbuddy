@@ -1,12 +1,13 @@
 import type { RouteDirection, RouteStopItem, LiveVehicle } from '@basbuddy/shared';
 
-export type MovementStatus = 'in_transit' | 'at_stop' | 'holding_dwell';
+export type MovementStatus = 'cruising' | 'slow_traffic' | 'in_transit' | 'at_stop' | 'holding_dwell';
 
 export interface VehicleMovementState {
   status: MovementStatus;
   label: string;
   badgeClass: string;
   pulseClass: string;
+  speedKmh?: number | null;
 }
 
 export interface DwellRecord {
@@ -24,9 +25,12 @@ export interface VehicleStopProgress {
 }
 
 /**
- * Returns movement status, badge colors, and display copy based on observed dwell time.
+ * Returns movement status, badge colors, and display copy based on observed dwell time and speed telemetry.
  */
-export function getVehicleMovementState(dwellMinutes = 0): VehicleMovementState {
+export function getVehicleMovementState(
+  dwellMinutes = 0,
+  speedKmh?: number | null,
+): VehicleMovementState {
   if (dwellMinutes >= 10) {
     const minsText = `${Math.floor(dwellMinutes)}m`;
     return {
@@ -34,6 +38,7 @@ export function getVehicleMovementState(dwellMinutes = 0): VehicleMovementState 
       label: `Holding / Dwell (~${minsText})`,
       badgeClass: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
       pulseClass: 'bg-amber-400',
+      speedKmh,
     };
   }
 
@@ -43,7 +48,51 @@ export function getVehicleMovementState(dwellMinutes = 0): VehicleMovementState 
       label: 'At Stop',
       badgeClass: 'bg-sky-500/20 text-sky-300 border border-sky-500/40',
       pulseClass: 'bg-sky-400',
+      speedKmh,
     };
+  }
+
+  if (speedKmh !== undefined && speedKmh !== null && !isNaN(speedKmh)) {
+    const roundedSpeed = Math.round(speedKmh);
+    if (speedKmh >= 35) {
+      return {
+        status: 'cruising',
+        label: `Cruising (${roundedSpeed} km/h)`,
+        badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
+        pulseClass: 'bg-emerald-400 animate-pulse',
+        speedKmh,
+      };
+    }
+
+    if (speedKmh > 0 && speedKmh < 15) {
+      return {
+        status: 'slow_traffic',
+        label: `Slow Traffic (${roundedSpeed} km/h)`,
+        badgeClass: 'bg-orange-500/20 text-orange-300 border border-orange-500/40',
+        pulseClass: 'bg-orange-400',
+        speedKmh,
+      };
+    }
+
+    if (speedKmh >= 15 && speedKmh < 35) {
+      return {
+        status: 'in_transit',
+        label: `En Route (${roundedSpeed} km/h)`,
+        badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
+        pulseClass: 'bg-emerald-400 animate-pulse',
+        speedKmh,
+      };
+    }
+
+    if (speedKmh === 0) {
+      return {
+        status: 'at_stop',
+        label: 'Stationary (0 km/h)',
+        badgeClass: 'bg-sky-500/20 text-sky-300 border border-sky-500/40',
+        pulseClass: 'bg-sky-400',
+        speedKmh,
+      };
+    }
   }
 
   return {
@@ -51,6 +100,7 @@ export function getVehicleMovementState(dwellMinutes = 0): VehicleMovementState 
     label: 'En Route',
     badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
     pulseClass: 'bg-emerald-400 animate-pulse',
+    speedKmh,
   };
 }
 

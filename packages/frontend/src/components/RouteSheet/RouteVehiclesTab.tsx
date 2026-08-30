@@ -44,10 +44,13 @@ export function RouteVehiclesTab({
   // Filter vehicles for active direction vs all
   const directionVehicles = useMemo(() => {
     return allVehicles.filter((v) => {
+      if (v.directionId !== undefined && v.directionId !== null) {
+        return activeDirection ? v.directionId === activeDirection.directionId : true;
+      }
       if (!v.nearestStopId) return true;
       return activeDirectionStopIds.has(v.nearestStopId);
     });
-  }, [allVehicles, activeDirectionStopIds]);
+  }, [allVehicles, activeDirection?.directionId, activeDirectionStopIds]);
 
   const displayedVehicles: LiveVehicle[] = filterMode === 'direction' ? directionVehicles : allVehicles;
   const liveCount = allVehicles.filter((v) => v.freshness === 'live').length;
@@ -162,7 +165,7 @@ export function RouteVehiclesTab({
         <div className="space-y-2.5">
           {displayedVehicles.map((vehicle, idx) => {
             const dwellMinutes = dwellMinutesMap.get(vehicle.tripId) ?? 0;
-            const movementState = getVehicleMovementState(dwellMinutes);
+            const movementState = getVehicleMovementState(dwellMinutes, vehicle.speedKmh);
             const relativeGps = formatRelativeGpsAge(vehicle.timestamp);
 
             // Resolve matching direction per vehicle for accurate headsign & sequence in All Buses mode

@@ -229,9 +229,11 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
             {
               tripId: `TRIP-${routeId}-1`,
               routeId,
+              directionId: 0,
               lat: 3.118,
               lon: 101.677,
               bearing: 270,
+              speedKmh: 42.0,
               timestamp: new Date().toISOString(),
               freshness: 'live',
               nearestStopId: 'KL1092',
@@ -239,13 +241,14 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
             {
               tripId: `TRIP-${routeId}-2`,
               routeId,
+              directionId: 1,
               lat: 3.072,
               lon: 101.518,
               bearing: 90,
+              speedKmh: 8.5,
               timestamp: new Date().toISOString(),
               freshness: 'live',
               nearestStopId: 'SA001',
-              directionId: 1,
             },
           ],
           timetable: {
@@ -397,17 +400,23 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     const vehiclesTab = timetableDialog.getByTestId('route-vehicles-tab');
     await expect(vehiclesTab).toBeVisible();
 
-    // Default "This Direction Only" view shows direction 0 vehicle with its headsign
-    await expect(vehiclesTab.getByTestId('vehicle-card-TRIP-750-1')).toContainText('Seksyen 2 Shah Alam');
+    // Default "This Direction Only" view shows direction 0 vehicle with its headsign and speed badge
+    const card1 = vehiclesTab.getByTestId('vehicle-card-TRIP-750-1');
+    await expect(card1).toContainText('Seksyen 2 Shah Alam');
+    await expect(card1).toContainText('Cruising (42 km/h)');
 
     // Toggle to "All Buses" view
     const allBusesToggle = vehiclesTab.getByRole('button', { name: /All Buses/i });
     await expect(allBusesToggle).toBeVisible();
     await allBusesToggle.click();
 
-    // Verify both vehicles are visible with their respective true direction headsigns
+    // Verify both vehicles are visible with their respective true direction headsigns and speed badges
     await expect(vehiclesTab.getByTestId('vehicle-card-TRIP-750-1')).toContainText('Seksyen 2 Shah Alam');
-    await expect(vehiclesTab.getByTestId('vehicle-card-TRIP-750-2')).toContainText('Hab Pasar Seni');
+    await expect(vehiclesTab.getByTestId('vehicle-card-TRIP-750-1')).toContainText('Cruising (42 km/h)');
+
+    const card2 = vehiclesTab.getByTestId('vehicle-card-TRIP-750-2');
+    await expect(card2).toContainText('Hab Pasar Seni');
+    await expect(card2).toContainText('Slow Traffic (9 km/h)');
 
     // Switch to Daily Schedule tab
     const scheduleTabBtn = timetableDialog.getByRole('button', { name: /Schedule/i });

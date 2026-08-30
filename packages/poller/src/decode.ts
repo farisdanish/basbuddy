@@ -23,6 +23,8 @@ export interface RawVehicleEntity {
   bearing: number | null;
   /** Unix timestamp from the GTFS-RT entity itself. */
   gtfsTimestamp: number | null;
+  /** Speed in km/h (converted from GTFS-RT m/s * 3.6), or null if absent/invalid. */
+  speedKmh: number | null;
 }
 
 /**
@@ -59,12 +61,22 @@ export function decodeRealtimeFeed(buffer: Buffer): RawVehicleEntity[] {
       continue;
     }
 
+    const hasSpeed =
+      typeof (pos as unknown as Record<string, unknown>).hasOwnProperty === 'function'
+        ? (pos as unknown as Record<string, unknown>).hasOwnProperty('speed')
+        : pos.speed !== undefined;
+    const speedKmh =
+      hasSpeed && typeof pos.speed === 'number' && !isNaN(pos.speed) && pos.speed >= 0
+        ? Math.round(pos.speed * 3.6 * 10) / 10
+        : null;
+
     results.push({
       tripId: vp.trip?.tripId ?? null,
       routeId: vp.trip?.routeId ?? null,
       lat,
       lon,
       bearing: pos.bearing ?? null,
+      speedKmh,
       gtfsTimestamp:
         typeof vp.timestamp === 'number'
           ? vp.timestamp
