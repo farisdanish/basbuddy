@@ -1,11 +1,19 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { StopListItem, AllStopsResponse, RouteListItem, RoutesResponse } from '@basbuddy/shared';
 import { apiGet } from '../lib/api.ts';
 
 export type SearchCategory = 'all' | 'stops' | 'routes';
+export type SearchAnchor = 'gps' | 'map';
 
 export interface SearchStopItem extends StopListItem {
   distanceMeters?: number;
+}
+
+export interface SearchMapViewport {
+  lat: number;
+  lon: number;
+  zoom?: number;
+  radiusMeters?: number;
 }
 
 export interface UseSearchResult {
@@ -14,6 +22,13 @@ export interface UseSearchResult {
   loading: boolean;
   error: string | null;
   isNearby: boolean;
+  searchAnchor: SearchAnchor;
+  isMapDiverged: boolean;
+  divergenceDistance: number | null;
+  activeRadiusMeters: number;
+  refreshMapArea: () => void;
+  resetToGps: () => void;
+  refresh: () => void;
 }
 
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -36,6 +51,7 @@ export function useSearch(
   query: string,
   category: SearchCategory = 'all',
   userLocation?: UserLocationProp,
+  mapViewport?: SearchMapViewport | null,
 ): UseSearchResult {
   const [allStops, setAllStops] = useState<StopListItem[]>(() => cachedStops ?? []);
   const [allRoutes, setAllRoutes] = useState<RouteListItem[]>(() => cachedRoutes ?? []);
@@ -46,6 +62,53 @@ export function useSearch(
 
   const locLat = userLocation ? (Array.isArray(userLocation) ? userLocation[0] : userLocation.lat) : null;
   const locLon = userLocation ? (Array.isArray(userLocation) ? userLocation[1] : userLocation.lon) : null;
+  const hasGps = locLat !== null && locLon !== null && !isNaN(locLat) && !isNaN(locLon);
+
+  // By default, searchAnchor is 'gps'. It switches to 'map' only when user explicitly refreshes/searches map area.
+  const [searchAnchor, setSearchAnchor] = useState<SearchAnchor>('gps');
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  // Track if user explicitly clicked "Search Map Area"
+  const userSwitchedToMapRef = useRef(false);
+
+  // Compute divergence between GPS and map viewport
+  const { isMapDiverged, divergenceDistance } = useMemo(() => {
+    if (!mapViewport) {
+      return { isMapDiverged: false, divergenceDistance: null };
+    }
+    if (!hasGps) {
+      // When GPS is unavailable, map area search is always available
+      return { isMapDiverged: true, divergenceDistance: null };
+    }
+    const dist = Math.round(haversineMeters(locLat!, locLon!, mapViewport.lat, mapViewport.lon));
+    return {
+      isMapDiverged: dist > 1000,
+      divergenceDistance: dist,
+    };
+  }, [hasGps, locLat, locLon, mapViewport]);
+
+  // Determine active coordinates and radius
+  const { activeLat, activeLon, activeRadiusMeters } = useMemo(() => {
+    if (searchAnchor === 'map' && mapViewport) {
+      return {
+        activeLat: mapViewport.lat,
+        activeLon: mapViewport.lon,
+        activeRadiusMeters: Math.min(50000, Math.max(1000, mapViewport.radiusMeters ?? 25000)),
+      };
+    }
+    if (hasGps) {
+      return {
+        activeLat: locLat,
+        activeLon: locLon,
+        activeRadiusMeters: 25000,
+      };
+    }
+    return {
+      activeLat: null,
+      activeLon: null,
+      activeRadiusMeters: 25000,
+    };
+  }, [searchAnchor, mapViewport, hasGps, locLat, locLon]);
 
   // 200ms debounce
   useEffect(() => {
@@ -55,7 +118,7 @@ export function useSearch(
     return () => clearTimeout(handler);
   }, [query]);
 
-  // Load static stops & routes once
+  // Load static stops & routes once on startup
   useEffect(() => {
     if (cachedStops && cachedRoutes) return;
 
@@ -89,9 +152,9 @@ export function useSearch(
     };
   }, []);
 
-  // Fetch nearby routes when user location is available
+  // Fetch nearby routes for active anchor (GPS or Map Viewport) only when coordinates are active
   useEffect(() => {
-    if (locLat === null || locLon === null || isNaN(locLat) || isNaN(locLon)) {
+    if (activeLat === null || activeLon === null || isNaN(activeLat) || isNaN(activeLon)) {
       setNearbyRoutes([]);
       return;
     }
@@ -101,7 +164,7 @@ export function useSearch(
     const loadNearbyRoutes = async () => {
       try {
         const res = await apiGet<RoutesResponse>(
-          `/api/routes?near=${locLat},${locLon}&radiusMeters=25000&limit=25`,
+          `/api/routes?near=${activeLat},${activeLon}&radiusMeters=${activeRadiusMeters}&limit=25`,
         );
         if (mounted && res.routes) {
           setNearbyRoutes(res.routes);
@@ -115,17 +178,33 @@ export function useSearch(
     return () => {
       mounted = false;
     };
-  }, [locLat, locLon]);
+  }, [activeLat, activeLon, activeRadiusMeters, refreshTick]);
+
+  const refreshMapArea = useCallback(() => {
+    userSwitchedToMapRef.current = true;
+    setSearchAnchor('map');
+    setRefreshTick((t) => t + 1);
+  }, []);
+
+  const resetToGps = useCallback(() => {
+    userSwitchedToMapRef.current = false;
+    setSearchAnchor('gps');
+    setRefreshTick((t) => t + 1);
+  }, []);
+
+  const refresh = useCallback(() => {
+    setRefreshTick((t) => t + 1);
+  }, []);
 
   const { stops, routes, isNearby } = useMemo(() => {
-    const hasLocation = locLat !== null && locLon !== null && !isNaN(locLat) && !isNaN(locLon);
-    const uLat = locLat ?? 0;
-    const uLon = locLon ?? 0;
+    const hasActiveCoords = activeLat !== null && activeLon !== null && !isNaN(activeLat) && !isNaN(activeLon);
+    const uLat = activeLat ?? 0;
+    const uLon = activeLon ?? 0;
 
     if (!debouncedQuery) {
       // Empty query default view
-      if (hasLocation && nearbyRoutes.length > 0) {
-        // Compute stop distances & sort
+      if (hasActiveCoords && nearbyRoutes.length > 0) {
+        // Compute stop distances & sort relative to active coordinates
         const stopsWithDistance: SearchStopItem[] = allStops
           .map((s) => ({
             ...s,
@@ -133,8 +212,9 @@ export function useSearch(
           }))
           .sort((a, b) => (a.distanceMeters ?? 0) - (b.distanceMeters ?? 0));
 
-        // Filter stops within ~3km, limit 10
-        const nearbyStops = stopsWithDistance.filter((s) => (s.distanceMeters ?? 0) <= 3000).slice(0, 10);
+        // When in map mode, filter stops within active map radius (min 2000m); when in GPS mode, ~3000m
+        const stopRadiusThreshold = searchAnchor === 'map' ? Math.max(activeRadiusMeters, 2000) : 3000;
+        const nearbyStops = stopsWithDistance.filter((s) => (s.distanceMeters ?? 0) <= stopRadiusThreshold).slice(0, 10);
 
         return {
           stops: category === 'routes' ? [] : (nearbyStops.length > 0 ? nearbyStops : stopsWithDistance.slice(0, 10)),
@@ -165,7 +245,7 @@ export function useSearch(
       (s) => s.stopName.toLowerCase().includes(q) || s.stopId.toLowerCase().includes(q),
     );
 
-    if (hasLocation) {
+    if (hasActiveCoords) {
       matchingStops = matchingStops
         .map((s) => ({
           ...s,
@@ -188,7 +268,20 @@ export function useSearch(
       routes: category === 'stops' ? [] : matchingRoutes,
       isNearby: false,
     };
-  }, [debouncedQuery, category, allStops, allRoutes, nearbyRoutes, locLat, locLon]);
+  }, [debouncedQuery, category, allStops, allRoutes, nearbyRoutes, activeLat, activeLon, searchAnchor, activeRadiusMeters]);
 
-  return { stops, routes, loading, error, isNearby };
+  return {
+    stops,
+    routes,
+    loading,
+    error,
+    isNearby,
+    searchAnchor,
+    isMapDiverged,
+    divergenceDistance,
+    activeRadiusMeters,
+    refreshMapArea,
+    resetToGps,
+    refresh,
+  };
 }

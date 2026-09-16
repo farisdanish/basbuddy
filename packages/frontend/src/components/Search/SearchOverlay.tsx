@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, X, Search, MapPin } from 'lucide-react';
-import { useSearch, type SearchCategory } from '../../hooks/useSearch.ts';
+import { ArrowLeft, X, Search, MapPin, RefreshCw, Compass, ArrowRight } from 'lucide-react';
+import { useSearch, type SearchCategory, type SearchMapViewport } from '../../hooks/useSearch.ts';
 import { getServiceBadge } from '../../utils/serviceBadges.ts';
 
 interface SearchOverlayProps {
@@ -9,6 +9,7 @@ interface SearchOverlayProps {
   onSelectStop: (stopId: string) => void;
   onSelectRoute: (routeId: string) => void;
   userLocation?: { lat: number; lon: number } | [number, number] | null;
+  mapViewport?: SearchMapViewport | null;
 }
 
 function formatDistance(meters?: number | null): string | null {
@@ -23,12 +24,24 @@ export function SearchOverlay({
   onSelectStop,
   onSelectRoute,
   userLocation,
+  mapViewport,
 }: SearchOverlayProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<SearchCategory>('all');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { stops, routes, loading, isNearby } = useSearch(query, category, userLocation);
+  const {
+    stops,
+    routes,
+    loading,
+    isNearby,
+    searchAnchor,
+    isMapDiverged,
+    divergenceDistance,
+    activeRadiusMeters,
+    refreshMapArea,
+    resetToGps,
+  } = useSearch(query, category, userLocation, mapViewport);
 
   useEffect(() => {
     if (isOpen) {
@@ -102,6 +115,29 @@ export function SearchOverlay({
 
       {/* Results List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Divergence banner: suggest searching map area when panned away from GPS */}
+        {!query && isMapDiverged && searchAnchor === 'gps' && (
+          <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-[#F4A100]/10 border border-[#F4A100]/25 text-xs text-[#FFF8EE]">
+            <div className="flex items-center gap-2 min-w-0">
+              <MapPin className="w-3.5 h-3.5 text-[#F4A100] shrink-0" />
+              <span className="truncate">
+                {divergenceDistance !== null
+                  ? `Map panned ${formatDistance(divergenceDistance)} away · search this area?`
+                  : 'Search routes in current map view?'}
+              </span>
+            </div>
+            <button
+              type="button"
+              data-testid="search-divergence-prompt-btn"
+              onClick={refreshMapArea}
+              className="text-[#F4A100] font-medium hover:underline text-[11px] whitespace-nowrap ml-2 shrink-0 flex items-center gap-1 active:scale-95 transition-all"
+            >
+              <span>Search Map Area</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         {loading && (
           <div className="flex items-center justify-center py-12 text-[#FFF8EE]/40 text-sm">
             Searching transit network...
@@ -109,8 +145,19 @@ export function SearchOverlay({
         )}
 
         {!loading && stops.length === 0 && routes.length === 0 && (
-          <div className="text-center py-12 text-[#FFF8EE]/40 text-sm">
-            {query ? 'No matching stops or routes found.' : 'Type a stop name or route number to begin.'}
+          <div className="text-center py-12 text-[#FFF8EE]/40 text-sm space-y-3">
+            <p>{query ? 'No matching stops or routes found.' : 'Type a stop name or route number to begin.'}</p>
+            {!query && mapViewport && (
+              <button
+                type="button"
+                data-testid="search-refresh-map-btn"
+                onClick={refreshMapArea}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F4A100]/10 border border-[#F4A100]/30 text-[#F4A100] text-xs font-mono hover:bg-[#F4A100]/20 active:scale-95 transition-all"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Search Current Map View</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -121,12 +168,40 @@ export function SearchOverlay({
               <h3 className="text-xs font-mono uppercase tracking-wider text-[#FFF8EE]/60 flex items-center gap-1.5">
                 <span>
                   {!query
-                    ? isNearby
+                    ? searchAnchor === 'map'
+                      ? `🗺️ Routes in Map View (${formatDistance(activeRadiusMeters)})`
+                      : isNearby
                       ? '📍 Routes Near You (Within 25 km)'
                       : '🚌 Popular & Active Routes'
                     : `Routes (${routes.length})`}
                 </span>
               </h3>
+              {!query && (
+                <div className="flex items-center gap-1.5">
+                  {searchAnchor === 'map' && userLocation && (
+                    <button
+                      type="button"
+                      data-testid="search-reset-gps-btn"
+                      onClick={resetToGps}
+                      className="text-[10px] font-mono text-[#FFF8EE]/70 hover:text-[#FFF8EE] flex items-center gap-1 px-2 py-0.5 rounded border border-white/10 hover:border-white/20 active:scale-95 transition-all"
+                      title="Switch search back to your GPS location"
+                    >
+                      <Compass className="w-3 h-3 text-emerald-400" />
+                      <span>My GPS</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    data-testid="search-refresh-map-btn"
+                    onClick={refreshMapArea}
+                    aria-label="Refresh routes for current map area"
+                    className="flex items-center gap-1 text-[11px] font-mono text-[#F4A100] hover:text-[#ffb733] bg-[#F4A100]/10 hover:bg-[#F4A100]/20 px-2 py-0.5 rounded border border-[#F4A100]/25 active:scale-95 transition-all shadow-sm"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                    <span>{searchAnchor === 'map' ? 'Refresh Map' : 'Search Map Area'}</span>
+                  </button>
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
               {routes.map((route) => {
@@ -159,7 +234,10 @@ export function SearchOverlay({
                             {badge.label}
                           </span>
                           {distanceStr && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1F7A6C]/20 text-[#2dd4bf] border border-[#1F7A6C]/40 shrink-0 font-medium">
+                            <span
+                              title={searchAnchor === 'map' ? 'Distance from map center' : 'Distance from you'}
+                              className="inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1F7A6C]/20 text-[#2dd4bf] border border-[#1F7A6C]/40 shrink-0 font-medium"
+                            >
                               <MapPin className="w-2.5 h-2.5" />
                               <span>{distanceStr}</span>
                             </span>
@@ -193,12 +271,43 @@ export function SearchOverlay({
           </div>
         )}
 
+        {/* Empty state for map area with zero routes */}
+        {!loading && searchAnchor === 'map' && routes.length === 0 && !query && (
+          <div className="p-4 rounded-xl bg-[#182337]/50 border border-white/5 text-center text-xs text-[#FFF8EE]/60 space-y-2">
+            <p>No transit routes found in this immediate map area (~{formatDistance(activeRadiusMeters)}).</p>
+            <p className="text-[11px] text-[#FFF8EE]/40">Try zooming out or panning to an active transit corridor.</p>
+            <div className="flex items-center justify-center gap-3 pt-1">
+              <button
+                type="button"
+                data-testid="search-refresh-map-btn"
+                onClick={refreshMapArea}
+                className="inline-flex items-center gap-1 text-xs text-[#F4A100] hover:underline"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Retry Map Search</span>
+              </button>
+              {userLocation && (
+                <button
+                  type="button"
+                  onClick={resetToGps}
+                  className="inline-flex items-center gap-1 text-xs text-[#FFF8EE]/60 hover:text-[#FFF8EE]"
+                >
+                  <Compass className="w-3 h-3 text-emerald-400" />
+                  <span>Back to my GPS location</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Stops Section */}
         {stops.length > 0 && (
           <div>
             <h3 className="text-xs font-mono uppercase tracking-wider text-[#FFF8EE]/50 mb-2">
               {!query
-                ? isNearby
+                ? searchAnchor === 'map'
+                  ? '🚏 Bus Stops in Map View'
+                  : isNearby
                   ? '🚏 Bus Stops Near You'
                   : 'Bus Stops'
                 : `Bus Stops (${stops.length})`}
@@ -225,7 +334,7 @@ export function SearchOverlay({
                           {stop.stopName}
                         </div>
                         {distanceStr && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#1F7A6C]/20 text-[#2dd4bf] border border-[#1F7A6C]/40 shrink-0 font-medium">
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1F7A6C]/20 text-[#2dd4bf] border border-[#1F7A6C]/40 shrink-0 font-medium">
                             {distanceStr} away
                           </span>
                         )}

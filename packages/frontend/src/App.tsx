@@ -39,13 +39,46 @@ function getTimeGradientClass(hour: number): string {
   return 'gradient-night';
 }
 
-function MapViewportSync({ onCenterChange }: { onCenterChange: (center: [number, number]) => void }) {
-  useMapEvents({
-    moveend: (e) => {
-      const c = e.target.getCenter();
-      onCenterChange([c.lat, c.lng]);
+export interface MapViewport {
+  lat: number;
+  lon: number;
+  zoom: number;
+  radiusMeters: number;
+}
+
+function MapViewportSync({ onViewportChange }: { onViewportChange: (viewport: MapViewport) => void }) {
+  const map = useMapEvents({
+    moveend: () => {
+      const c = map.getCenter();
+      const bounds = map.getBounds();
+      const radiusMeters = Math.min(
+        50000,
+        Math.max(1000, Math.round(map.distance(c, bounds.getNorthEast()))),
+      );
+      onViewportChange({
+        lat: c.lat,
+        lon: c.lng,
+        zoom: map.getZoom(),
+        radiusMeters,
+      });
     },
   });
+
+  useEffect(() => {
+    const c = map.getCenter();
+    const bounds = map.getBounds();
+    const radiusMeters = Math.min(
+      50000,
+      Math.max(1000, Math.round(map.distance(c, bounds.getNorthEast()))),
+    );
+    onViewportChange({
+      lat: c.lat,
+      lon: c.lng,
+      zoom: map.getZoom(),
+      radiusMeters,
+    });
+  }, [map, onViewportChange]);
+
   return null;
 }
 
@@ -103,6 +136,12 @@ export default function App() {
   const initialCenter: [number, number] = getTargetCenter(position, DEFAULT_MAP_CENTER);
 
   const [mapCenter, setMapCenter] = useState<[number, number]>(initialCenter);
+  const [mapViewport, setMapViewport] = useState<MapViewport>({
+    lat: initialCenter[0],
+    lon: initialCenter[1],
+    zoom: DEFAULT_MAP_ZOOM,
+    radiusMeters: 25000,
+  });
   const [selectedStopId, setSelectedStopId] = useState<string | null>(() => {
     // Support URL ?stop=KL1081 query param
     const params = new URLSearchParams(window.location.search);
@@ -235,8 +274,9 @@ export default function App() {
     }
   }, [selectedRouteId, selectedStopId]);
 
-  const handleCenterChange = useCallback((newCenter: [number, number]) => {
-    setMapCenter(newCenter);
+  const handleViewportChange = useCallback((newViewport: MapViewport) => {
+    setMapCenter([newViewport.lat, newViewport.lon]);
+    setMapViewport(newViewport);
   }, []);
 
   const handleSelectStop = useCallback((stopId: string) => {
@@ -302,7 +342,7 @@ export default function App() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <MapViewportSync onCenterChange={handleCenterChange} />
+        <MapViewportSync onViewportChange={handleViewportChange} />
         <MapAutoCenter position={position} />
         <UserLocationMarker position={position} />
         <RoutePolylineLayer
@@ -410,6 +450,7 @@ export default function App() {
           handleSelectRoute(routeId);
         }}
         userLocation={position}
+        mapViewport={mapViewport}
       />
 
       {/* ── Bottom Favourites Tray ──────────────────────────────────────────── */}

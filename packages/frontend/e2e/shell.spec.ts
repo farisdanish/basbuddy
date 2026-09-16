@@ -45,7 +45,7 @@ test.describe('Frontend Shell (M5)', () => {
       });
     });
 
-    await page.route('/api/routes', async (route) => {
+    await page.route(/\/api\/routes(\?.*)?/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
