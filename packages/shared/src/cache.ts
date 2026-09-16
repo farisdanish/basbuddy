@@ -13,6 +13,8 @@ export const VALKEY_KEYS = {
   stopEtas: (stopId: string) => `stop_etas:${stopId}`,
   routeVehicles: (routeId: string) => `route:${routeId}:vehicles`,
   pollerLastSuccess: 'poller:last_success',
+  upstreamHealth: 'poller:upstream_health',
+  scheduleMetadata: 'ingestion:schedule_metadata',
 } as const;
 
 /** Default TTL in seconds for vehicle and stop_etas keys. */

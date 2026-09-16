@@ -337,6 +337,10 @@ export default function App() {
           pushOverlayHistory();
           setInfoModalTab('about');
         }}
+        onOpenStatus={() => {
+          pushOverlayHistory();
+          setInfoModalTab('status');
+        }}
         onOpenDrawer={() => {
           pushOverlayHistory();
           setDrawerOpen(true);
@@ -383,6 +387,10 @@ export default function App() {
         onOpenAbout={() => {
           setDrawerOpen(false);
           setInfoModalTab('about');
+        }}
+        onOpenStatus={() => {
+          setDrawerOpen(false);
+          setInfoModalTab('status');
         }}
         onResetView={handleResetView}
       />
@@ -439,10 +447,11 @@ export default function App() {
         selectedRouteId={selectedRouteId}
       />
 
-      {/* ── Info / FAQ / Feedback Modal Dialog ──────────────────────────────── */}
+      {/* ── Info / FAQ / Status / Feedback Modal Dialog ─────────────────────── */}
       <InfoModal
         isOpen={infoModalTab !== null}
         initialTab={infoModalTab ?? 'about'}
+        systemHealth={health}
         onClose={() => {
           handleCloseWithHistory(() => setInfoModalTab(null));
         }}
@@ -485,6 +494,17 @@ export default function App() {
           className="hidden sm:inline pointer-events-auto underline hover:text-[#F4A100] transition-colors"
         >
           FAQ
+        </button>
+        <span className="hidden sm:inline">·</span>
+        <button
+          type="button"
+          onClick={() => {
+            pushOverlayHistory();
+            setInfoModalTab('status');
+          }}
+          className="hidden sm:inline pointer-events-auto underline hover:text-[#F4A100] transition-colors"
+        >
+          Status
         </button>
         <span className="hidden sm:inline">·</span>
         <button

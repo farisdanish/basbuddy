@@ -9,8 +9,30 @@ test.describe('Frontend Shell (M5)', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           status: 'ok',
+          pollerHealthy: true,
+          pollerAgeSeconds: 15,
           pollerLastSuccess: new Date().toISOString(),
           timestamp: new Date().toISOString(),
+          upstream: {
+            status: 'operational',
+            httpStatus: 200,
+            responseTimeMs: 125,
+            feedTimestamp: new Date().toISOString(),
+            lastSuccessAt: new Date().toISOString(),
+            lastAttemptAt: new Date().toISOString(),
+            activeVehiclesCount: 160,
+            matchedVehiclesCount: 145,
+            feedUrl: 'https://api.data.gov.my/...',
+            lastError: null,
+          },
+          schedule: {
+            lastIngestedAt: new Date().toISOString(),
+            feedId: 'rapid-bus-kl',
+            routesCount: 157,
+            stopsCount: 3248,
+            tripsCount: 12480,
+            status: 'fresh',
+          },
         }),
       });
     });
@@ -199,6 +221,13 @@ test.describe('Frontend Shell (M5)', () => {
     await faqTab.click();
     await expect(infoModal).toContainText('Why does it say "No live GPS"');
 
+    // Switch to Status tab
+    const statusTab = infoModal.getByRole('button', { name: 'Status' });
+    await statusTab.click();
+    await expect(infoModal).toContainText('data.gov.my Realtime Telemetry');
+    await expect(infoModal).toContainText('GTFS Static Timetable Data');
+    await expect(infoModal).toContainText('BasBuddy Core Engine');
+
     // Switch to Feedback tab
     const feedbackTab = infoModal.getByRole('button', { name: 'Feedback' });
     await feedbackTab.click();
@@ -211,6 +240,16 @@ test.describe('Frontend Shell (M5)', () => {
     const closeBtn = infoModal.getByRole('button', { name: 'Close information modal' });
     await closeBtn.click();
     await expect(infoModal).not.toBeVisible();
+
+    // Verify clicking HealthIndicatorBadge opens Status tab directly
+    const healthBadge = page.getByRole('button', { name: /Feed status: Live/i });
+    if (await healthBadge.isVisible()) {
+      await healthBadge.click();
+      await expect(infoModal).toBeVisible();
+      await expect(infoModal).toContainText('data.gov.my Realtime Telemetry');
+      await closeBtn.click();
+      await expect(infoModal).not.toBeVisible();
+    }
 
     // 2. Open directly to FAQ via footer hyperlink
     // Footer text links are `hidden sm:inline` by design (see App.tsx footer) —

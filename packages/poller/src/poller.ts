@@ -80,6 +80,25 @@ async function main(): Promise<void> {
         // The heartbeat key is NOT written on a total cycle failure, which is
         // the intended signal: if poller:last_success goes stale, something is wrong.
         console.error(`[poller] Cycle ${cycleNumber} failed:`, err);
+        try {
+          const rawPrev = await valkey.get(VALKEY_KEYS.upstreamHealth);
+          const prev = rawPrev ? JSON.parse(rawPrev) : null;
+          const errorHealth = {
+            status: 'down',
+            httpStatus: (err as any).httpStatus ?? null,
+            responseTimeMs: (err as any).latencyMs ?? null,
+            feedTimestamp: prev?.feedTimestamp ?? null,
+            lastSuccessAt: prev?.lastSuccessAt ?? null,
+            lastAttemptAt: new Date().toISOString(),
+            activeVehiclesCount: 0,
+            matchedVehiclesCount: 0,
+            feedUrl: GTFS_REALTIME_URL,
+            lastError: (err as Error).message || 'Upstream fetch failed',
+          };
+          await valkey.set(VALKEY_KEYS.upstreamHealth, JSON.stringify(errorHealth));
+        } catch {
+          // Ignore secondary valkey logging failure
+        }
       }
 
       // Schedule next cycle regardless of success/failure

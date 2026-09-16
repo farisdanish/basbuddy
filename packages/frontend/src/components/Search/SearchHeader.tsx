@@ -6,6 +6,7 @@ import type { SystemHealthStatus } from '../../hooks/useSystemHealth.ts';
 interface SearchHeaderProps {
   onOpenSearch: () => void;
   onOpenInfo?: () => void;
+  onOpenStatus?: () => void;
   onOpenDrawer?: () => void;
   onResetView?: () => void;
   systemStatus: SystemHealthStatus;
@@ -15,6 +16,7 @@ interface SearchHeaderProps {
 export function SearchHeader({
   onOpenSearch,
   onOpenInfo,
+  onOpenStatus,
   onOpenDrawer,
   onResetView,
   systemStatus,
@@ -100,7 +102,11 @@ export function SearchHeader({
 
         {/* Right action cluster: Status Pill + Info Button */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <HealthIndicatorBadge status={systemStatus} ageSeconds={pollerAgeSeconds} />
+          <HealthIndicatorBadge
+            status={systemStatus}
+            ageSeconds={pollerAgeSeconds}
+            onClick={onOpenStatus}
+          />
           {onOpenInfo && (
             <button
               type="button"

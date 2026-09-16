@@ -102,6 +102,47 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('degraded');
     });
+
+    it('returns enriched upstream and schedule diagnostics when recorded in cache', async () => {
+      const recentTimestamp = new Date().toISOString();
+      mockValkey.store.set(VALKEY_KEYS.pollerLastSuccess, recentTimestamp);
+      mockValkey.store.set(
+        VALKEY_KEYS.upstreamHealth,
+        JSON.stringify({
+          status: 'operational',
+          httpStatus: 200,
+          responseTimeMs: 120,
+          feedTimestamp: recentTimestamp,
+          lastSuccessAt: recentTimestamp,
+          lastAttemptAt: recentTimestamp,
+          activeVehiclesCount: 150,
+          matchedVehiclesCount: 140,
+          feedUrl: 'https://api.data.gov.my/...',
+          lastError: null,
+        }),
+      );
+      mockValkey.store.set(
+        VALKEY_KEYS.scheduleMetadata,
+        JSON.stringify({
+          lastIngestedAt: recentTimestamp,
+          feedId: 'rapid-bus-kl',
+          routesCount: 157,
+          stopsCount: 3200,
+          tripsCount: 12000,
+          status: 'fresh',
+        }),
+      );
+
+      const res = await request(app).get('/api/health');
+      expect(res.status).toBe(200);
+      expect(res.body.upstream).toBeDefined();
+      expect(res.body.upstream.status).toBe('operational');
+      expect(res.body.upstream.responseTimeMs).toBe(120);
+      expect(res.body.upstream.activeVehiclesCount).toBe(150);
+      expect(res.body.schedule).toBeDefined();
+      expect(res.body.schedule.routesCount).toBe(157);
+      expect(res.body.schedule.stopsCount).toBe(3200);
+    });
   });
 
   // ── 2. GET /api/stops ──────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import {
   Bus,
   Check,
   Building2,
+  Activity,
 } from 'lucide-react';
 import {
   KLANG_VALLEY_HUBS,
@@ -27,6 +28,7 @@ export interface NavigationDrawerProps {
   onSelectHub: (hub: TransitHub) => void;
   onOpenFavorites: () => void;
   onOpenAbout: () => void;
+  onOpenStatus?: () => void;
   onResetView?: () => void;
 }
 
@@ -38,6 +40,7 @@ export function NavigationDrawer({
   onSelectHub,
   onOpenFavorites,
   onOpenAbout,
+  onOpenStatus,
   onResetView,
 }: NavigationDrawerProps) {
   const [hubSearchQuery, setHubSearchQuery] = useState('');
@@ -285,6 +288,23 @@ export function NavigationDrawer({
               </div>
               <span className="text-[10px] font-mono text-[#FFF8EE]/40">Info</span>
             </button>
+
+            {onOpenStatus && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenStatus();
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-sans text-[#FFF8EE] transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-[#F4A100]" />
+                  <span>System & Data Health</span>
+                </div>
+                <span className="text-[10px] font-mono text-emerald-400 font-semibold">Live</span>
+              </button>
+            )}
 
             <a
               href="https://github.com/farisdanish/basbuddy"

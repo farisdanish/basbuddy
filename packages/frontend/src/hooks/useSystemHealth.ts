@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiGet } from '../lib/api.ts';
-
-export interface HealthResponse {
-  status: string;
-  pollerLastSuccess: string | null;
-  timestamp: string;
-}
+import type {
+  HealthResponse,
+  UpstreamHealthInfo,
+  StaticScheduleHealthInfo,
+} from '@basbuddy/shared';
 
 export type SystemHealthStatus = 'live' | 'stale' | 'offline';
 
@@ -14,6 +13,11 @@ export interface UseSystemHealthResult {
   isDegraded: boolean;
   pollerAgeSeconds: number | null;
   isOnline: boolean;
+  upstream?: UpstreamHealthInfo;
+  schedule?: StaticScheduleHealthInfo;
+  lastChecked: Date | null;
+  isRefreshing: boolean;
+  refreshHealth: () => Promise<void>;
 }
 
 const POLL_INTERVAL_MS = 30_000;
@@ -24,11 +28,19 @@ export function useSystemHealth(): UseSystemHealthResult {
   const [isDegraded, setIsDegraded] = useState(false);
   const [pollerAgeSeconds, setPollerAgeSeconds] = useState<number | null>(null);
   const [isOnline, setIsOnline] = useState(true);
+  const [upstream, setUpstream] = useState<UpstreamHealthInfo | undefined>(undefined);
+  const [schedule, setSchedule] = useState<StaticScheduleHealthInfo | undefined>(undefined);
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const checkHealth = useCallback(async () => {
+    setIsRefreshing(true);
     try {
       const res = await apiGet<HealthResponse>('/api/health');
       setIsOnline(true);
+      setLastChecked(new Date());
+      setUpstream(res.upstream);
+      setSchedule(res.schedule);
 
       if (!res.pollerLastSuccess) {
         setStatus('stale');
@@ -51,6 +63,9 @@ export function useSystemHealth(): UseSystemHealthResult {
       setIsOnline(false);
       setStatus('offline');
       setIsDegraded(true);
+      setLastChecked(new Date());
+    } finally {
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -60,5 +75,16 @@ export function useSystemHealth(): UseSystemHealthResult {
     return () => clearInterval(id);
   }, [checkHealth]);
 
-  return { status, isDegraded, pollerAgeSeconds, isOnline };
+  return {
+    status,
+    isDegraded,
+    pollerAgeSeconds,
+    isOnline,
+    upstream,
+    schedule,
+    lastChecked,
+    isRefreshing,
+    refreshHealth: checkHealth,
+  };
 }
+

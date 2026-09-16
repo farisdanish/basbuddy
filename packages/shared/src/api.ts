@@ -238,6 +238,28 @@ export interface CreateFavoriteBody {
 
 export type HealthStatus = 'ok' | 'degraded';
 
+export interface UpstreamHealthInfo {
+  status: 'operational' | 'degraded' | 'down';
+  httpStatus: number | null;
+  responseTimeMs: number | null;
+  feedTimestamp: string | null;
+  lastSuccessAt: string | null;
+  lastAttemptAt: string;
+  activeVehiclesCount: number;
+  matchedVehiclesCount?: number;
+  feedUrl?: string;
+  lastError: string | null;
+}
+
+export interface StaticScheduleHealthInfo {
+  lastIngestedAt: string | null;
+  feedId: string;
+  routesCount: number;
+  stopsCount: number;
+  tripsCount: number;
+  status: 'fresh' | 'stale' | 'unknown';
+}
+
 export interface HealthResponse {
   status: HealthStatus;
   pollerHealthy: boolean;
@@ -245,6 +267,8 @@ export interface HealthResponse {
   pollerAgeSeconds: number;
   pollerLastSuccess: string | null;
   timestamp: string;
+  upstream?: UpstreamHealthInfo;
+  schedule?: StaticScheduleHealthInfo;
 }
 
 // ── Error shape ───────────────────────────────────────────────────────────────

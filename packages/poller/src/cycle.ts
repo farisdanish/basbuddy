@@ -15,6 +15,7 @@ import {
   type VehiclePositionCache,
   type StopArrival,
   type StopEtasResponse,
+  type UpstreamHealthInfo,
 } from '@basbuddy/shared';
 
 // Lookahead window for ETA — only include trips arriving within this many seconds.
@@ -63,7 +64,7 @@ export async function runPollCycle(opts: CycleOptions): Promise<void> {
   console.log(`\n[cycle ${cycleNumber}] Starting at ${new Date().toISOString()}`);
 
   // ── 1. Fetch ─────────────────────────────────────────────────────────────────
-  const buffer = await fetchRealtimeFeed(url);
+  const { buffer, latencyMs, httpStatus } = await fetchRealtimeFeed(url);
 
   // ── 2. Decode + filter ────────────────────────────────────────────────────────
   const entities = decodeRealtimeFeed(buffer);
@@ -313,6 +314,21 @@ export async function runPollCycle(opts: CycleOptions): Promise<void> {
       VEHICLE_TTL_SECONDS,
     );
   }
+
+  // Record data.gov.my upstream telemetry & health
+  const upstreamHealth: UpstreamHealthInfo = {
+    status: 'operational',
+    httpStatus,
+    responseTimeMs: latencyMs,
+    feedTimestamp: generatedAt,
+    lastSuccessAt: generatedAt,
+    lastAttemptAt: generatedAt,
+    activeVehiclesCount: entities.length,
+    matchedVehiclesCount: vehicleCaches.length,
+    feedUrl: url,
+    lastError: null,
+  };
+  pipeline.set(VALKEY_KEYS.upstreamHealth, JSON.stringify(upstreamHealth));
 
   await pipeline.exec();
 

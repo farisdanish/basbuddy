@@ -50,6 +50,18 @@ async function ingestFeed(pool: Pool, feed: FeedConfig): Promise<void> {
   console.log(`[ingest:${feed.id}] Upserting into Postgres with feed_id="${feed.id}"...`);
   await upsertAll(pool, { routes, stops, trips, stopTimes, shapes, calendar }, feed.id);
   const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
+
+  // ── 5. Log sync metadata ──────────────────────────────────────────────────────
+  try {
+    await pool.query(
+      `INSERT INTO feed_sync_logs (feed_id, status, routes_count, stops_count, trips_count, duration_seconds, synced_at)
+       VALUES ($1, 'success', $2, $3, $4, $5, now())`,
+      [feed.id, routes.length, stops.length, trips.length, Number(elapsed)],
+    );
+  } catch (logErr) {
+    console.warn(`[ingest:${feed.id}] ⚠️ Note: feed_sync_logs not updated (${(logErr as Error).message})`);
+  }
+
   console.log(`[ingest:${feed.id}] ✓ Feed "${feed.id}" completed successfully in ${elapsed}s`);
 }
 
