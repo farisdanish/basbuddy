@@ -103,6 +103,7 @@ body {
 .font-data    { font-family: var(--font-data); }
 
 .text-live        { color: var(--freshness-live); }
+.text-estimated   { color: #F4A100; }
 .text-stale       { color: var(--freshness-stale); }
 .text-signal-lost { color: var(--freshness-signal-lost); }
 
@@ -120,6 +121,7 @@ body {
   border: 1px solid var(--border-subtle);
 }
 .eta-pill.live        { border-color: var(--freshness-live);   color: var(--freshness-live); }
+.eta-pill.estimated   { border-color: #F4A100;                 color: #F4A100; }
 .eta-pill.stale       { border-color: var(--freshness-stale);  color: var(--freshness-stale); }
 .eta-pill.signal-lost { opacity: 0.5; }
 

@@ -343,9 +343,11 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
         const freshness =
           pollerStale || ageSeconds > 240
             ? 'signal_lost'
-            : ageSeconds > 120
-              ? 'stale'
-              : 'live';
+            : vc.isExtrapolated
+              ? 'estimated'
+              : ageSeconds > 120
+                ? 'stale'
+                : 'live';
 
         // Find nearest stop along route stops for progress tracking
         let nearestStopId: string | null = null;
@@ -603,9 +605,11 @@ routesRouter.get('/routes/:routeId/vehicles', async (req, res) => {
         const freshness =
           pollerStale || ageSeconds > 240
             ? 'signal_lost'
-            : ageSeconds > 120
-              ? 'stale'
-              : 'live';
+            : vc.isExtrapolated
+              ? 'estimated'
+              : ageSeconds > 120
+                ? 'stale'
+                : 'live';
 
         vehicles.push({
           tripId: vc.tripId,

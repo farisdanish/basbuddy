@@ -60,7 +60,7 @@ export function RouteVehiclesTab({
   }, [allVehicles, activeDirection?.directionId, activeDirectionStopIds]);
 
   const displayedVehicles: LiveVehicle[] = filterMode === 'direction' ? directionVehicles : allVehicles;
-  const liveCount = allVehicles.filter((v) => v.freshness === 'live').length;
+  const liveCount = allVehicles.filter((v) => v.freshness === 'live' || v.freshness === 'estimated').length;
 
   return (
     <div className="space-y-3" data-testid="route-vehicles-tab">
@@ -190,6 +190,7 @@ export function RouteVehiclesTab({
             const progress = findVehicleStopProgress(vehicle, stopsLookup, vehicleDirStops);
 
             const isLive = vehicle.freshness === 'live';
+            const isEstimated = vehicle.freshness === 'estimated';
             const isStale = vehicle.freshness === 'stale';
 
             const stableIndex = getStableVehicleIndex(vehicle.tripId, allVehicles);
@@ -237,11 +238,11 @@ export function RouteVehiclesTab({
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span
                       className={`w-2 h-2 rounded-full ${
-                        isLive ? 'bg-emerald-400 animate-pulse' : isStale ? 'bg-amber-400' : 'bg-rose-400'
+                        isLive ? 'bg-emerald-400 animate-pulse' : isEstimated ? 'bg-[#F4A100] animate-pulse' : isStale ? 'bg-amber-400' : 'bg-rose-400'
                       }`}
                     />
                     <span className="text-[10px] font-mono text-[#FFF8EE]/50">
-                      {relativeGps}
+                      {isEstimated ? 'Extrapolated' : relativeGps}
                     </span>
                   </div>
                 </div>

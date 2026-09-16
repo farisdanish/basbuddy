@@ -15,6 +15,7 @@ export function formatEta(etaSeconds: number): string {
 export function freshnessClass(freshness: FreshnessStatus): string {
   switch (freshness) {
     case 'live':        return 'live';
+    case 'estimated':   return 'estimated';
     case 'stale':       return 'stale';
     case 'signal_lost': return 'signal-lost';
     default:            return 'signal-lost';
@@ -63,6 +64,8 @@ export function ArrivalRow({ arrival, onSelectRoute }: ArrivalRowProps) {
               <span>Schedule estimate</span>
             ) : arrival.freshness === 'stale' ? (
               <span className="text-amber-400/80">Stale GPS feed</span>
+            ) : arrival.freshness === 'estimated' ? (
+              <span className="text-[#F4A100]/90">Estimated (extrapolated)</span>
             ) : (
               <span className="text-emerald-400/80">Live vehicle tracked</span>
             )}
@@ -72,7 +75,7 @@ export function ArrivalRow({ arrival, onSelectRoute }: ArrivalRowProps) {
 
       {/* ETA pill */}
       <div className={`eta-pill ${cls} shrink-0 select-none`}>
-        {arrival.freshness === 'live' && <span className="live-dot" />}
+        {(arrival.freshness === 'live' || arrival.freshness === 'estimated') && <span className="live-dot" />}
         <span className="font-data font-medium text-xs">
           {formatEta(arrival.etaSeconds)}
         </span>

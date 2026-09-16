@@ -6,6 +6,7 @@ import { computeEta } from '../eta.js';
 import {
   haversineMeters,
   projectPointToPolylineDistance,
+  pointAtPolylineDistance,
   type StaticLookup,
   type ShapePoint,
 } from '../staticLookup.js';
@@ -420,6 +421,45 @@ describe('GTFS-RT Poller & ETA Engine', () => {
       const missingInfo = stopsMap.get('SA999');
       const fallbackName = missingInfo?.stopName || 'SA999';
       expect(fallbackName).toBe('SA999');
+    });
+  });
+
+  describe('Dead-Reckoning Extrapolation & Estimated Freshness (Task D1)', () => {
+    const shapePoints: ShapePoint[] = [
+      { sequence: 1, lat: 3.1000, lon: 101.6000 },
+      { sequence: 2, lat: 3.1100, lon: 101.6000 },
+      { sequence: 3, lat: 3.1200, lon: 101.6000 },
+    ];
+    const d1 = haversineMeters(3.1000, 101.6000, 3.1100, 101.6000);
+    const d2 = d1 + haversineMeters(3.1100, 101.6000, 3.1200, 101.6000);
+    const cumDist = [0, d1, d2];
+
+    it('extrapolates position along polyline at specified distance', () => {
+      // Halfway between point 1 and 2
+      const target = d1 * 0.5;
+      const res = pointAtPolylineDistance(target, shapePoints, cumDist);
+      expect(res).not.toBeNull();
+      expect(res!.lat).toBeCloseTo(3.1050, 3);
+      expect(res!.lon).toBeCloseTo(101.6000, 3);
+      expect(res!.bearing).toBe(0); // Heading directly north (lat increasing)
+    });
+
+    it('returns null when target distance exceeds total shape length', () => {
+      const res = pointAtPolylineDistance(d2 + 100, shapePoints, cumDist);
+      expect(res).toBeNull();
+    });
+
+    it('correctly calculates forward bearing on non-cardinal segments', () => {
+      const diagonalPoints: ShapePoint[] = [
+        { sequence: 1, lat: 3.000, lon: 101.000 },
+        { sequence: 2, lat: 3.010, lon: 101.010 },
+      ];
+      const dist = haversineMeters(3.000, 101.000, 3.010, 101.010);
+      const res = pointAtPolylineDistance(dist * 0.5, diagonalPoints, [0, dist]);
+      expect(res).not.toBeNull();
+      // North-East heading is approx 45 degrees
+      expect(res!.bearing).toBeGreaterThan(40);
+      expect(res!.bearing).toBeLessThan(50);
     });
   });
 

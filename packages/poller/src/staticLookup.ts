@@ -287,3 +287,49 @@ function closestPointOnSegment(
     projLon: p1Lon + t * dx,
   };
 }
+
+/**
+ * Given a cumulative distance in meters along a shape polyline,
+ * computes the extrapolated (lat, lon) and forward bearing.
+ *
+ * Returns null if target distance exceeds the total length of the shape (trip completed).
+ */
+export function pointAtPolylineDistance(
+  targetDist: number,
+  points: ShapePoint[],
+  cumDist: number[],
+): { lat: number; lon: number; bearing: number } | null {
+  if (points.length < 2 || cumDist.length < 2) return null;
+  const totalDist = cumDist[cumDist.length - 1]!;
+  if (targetDist >= totalDist) {
+    return null;
+  }
+  const clampedDist = Math.max(0, targetDist);
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const d1 = cumDist[i]!;
+    const d2 = cumDist[i + 1]!;
+    if (clampedDist >= d1 && clampedDist <= d2) {
+      const segLen = d2 - d1;
+      const t = segLen > 0 ? (clampedDist - d1) / segLen : 0;
+      const p1 = points[i]!;
+      const p2 = points[i + 1]!;
+      const lat = p1.lat + t * (p2.lat - p1.lat);
+      const lon = p1.lon + t * (p2.lon - p1.lon);
+      const bearing = computeSegmentBearing(p1.lat, p1.lon, p2.lat, p2.lon);
+      return { lat, lon, bearing };
+    }
+  }
+  return null;
+}
+
+function computeSegmentBearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const toDeg = (r: number) => (r * 180) / Math.PI;
+  const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
+  const x =
+    Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+    Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
+  const b = toDeg(Math.atan2(y, x));
+  return Math.round((b + 360) % 360);
+}

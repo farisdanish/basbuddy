@@ -15,9 +15,10 @@ export type ArrivalSource = 'live' | 'schedule';
  * Freshness of a specific ETA / vehicle marker.
  * 'live'        — vehicle:* Valkey key is present and within TTL
  * 'stale'       — key is approaching TTL (optional mid-state for UI degradation)
+ * 'estimated'   — position is dead-reckoned/extrapolated after a missed poller cycle
  * 'signal_lost' — key has expired, or no live position found; schedule fallback in use
  */
-export type FreshnessStatus = 'live' | 'stale' | 'signal_lost';
+export type FreshnessStatus = 'live' | 'stale' | 'estimated' | 'signal_lost';
 
 // ── Shared sub-shapes ─────────────────────────────────────────────────────────
 

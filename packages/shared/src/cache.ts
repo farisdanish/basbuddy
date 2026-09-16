@@ -71,6 +71,8 @@ export interface VehiclePositionCache {
   timestamp: string;
   /** Speed in km/h (converted from GTFS-RT m/s * 3.6), or null if absent/invalid. */
   speedKmh?: number | null;
+  /** True if this position was extrapolated via dead-reckoning after a missed GTFS-RT cycle. */
+  isExtrapolated?: boolean;
 }
 
 // ── Re-export StopEtasResponse for the poller ─────────────────────────────────
