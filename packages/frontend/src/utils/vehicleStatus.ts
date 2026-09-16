@@ -1,6 +1,6 @@
 import type { RouteDirection, RouteStopItem, LiveVehicle } from '@basbuddy/shared';
 
-export type MovementStatus = 'cruising' | 'slow_traffic' | 'in_transit' | 'at_stop' | 'holding_dwell';
+export type MovementStatus = 'cruising' | 'slow_traffic' | 'in_transit' | 'at_stop' | 'holding_dwell' | 'off_course';
 
 export interface VehicleMovementState {
   status: MovementStatus;
@@ -30,7 +30,18 @@ export interface VehicleStopProgress {
 export function getVehicleMovementState(
   dwellMinutes = 0,
   speedKmh?: number | null,
+  isOffCourse = false,
 ): VehicleMovementState {
+  if (isOffCourse) {
+    return {
+      status: 'off_course',
+      label: 'Off Route (>200m)',
+      badgeClass: 'bg-rose-500/20 text-rose-300 border border-rose-500/40',
+      pulseClass: 'bg-rose-400 animate-pulse',
+      speedKmh,
+    };
+  }
+
   if (dwellMinutes >= 10) {
     const minsText = `${Math.floor(dwellMinutes)}m`;
     return {
@@ -251,3 +262,28 @@ export function updateDwellTracker(
 
   return dwellMinutesMap;
 }
+
+/**
+ * Assigns a stable 1-based index (1..N) to a vehicle within a list of vehicles
+ * by sorting distinct tripIds alphabetically. This prevents vehicle indices from
+ * reshuffling every 30s when the backend returns vehicles in varying order.
+ */
+export function getStableVehicleIndex(
+  tripId: string,
+  vehicles: Array<{ tripId: string }>,
+): number {
+  if (!tripId || vehicles.length === 0) return 1;
+  const uniqueSortedTripIds = Array.from(
+    new Set(vehicles.map((v) => v.tripId).filter(Boolean)),
+  ).sort();
+  const index = uniqueSortedTripIds.indexOf(tripId);
+  return index >= 0 ? index + 1 : 1;
+}
+
+/**
+ * Rider-friendly vehicle label (e.g. "Bus 1 of 3").
+ */
+export function formatVehicleBadgeLabel(index: number, total: number): string {
+  return total > 1 ? `Bus ${index} of ${total}` : 'Bus 1';
+}
+

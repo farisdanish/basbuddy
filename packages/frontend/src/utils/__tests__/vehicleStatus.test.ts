@@ -6,6 +6,8 @@ import {
   buildRouteStopsLookup,
   findVehicleStopProgress,
   updateDwellTracker,
+  getStableVehicleIndex,
+  formatVehicleBadgeLabel,
   type DwellRecord,
 } from '../vehicleStatus.ts';
 
@@ -351,4 +353,43 @@ describe('vehicleStatus utilities', () => {
       expect(dwellMap.has('750:BUS_2')).toBe(true);
     });
   });
+
+  describe('getStableVehicleIndex', () => {
+    it('assigns stable 1-based index regardless of array order', () => {
+      const vOrder1 = [{ tripId: 'trip_C' }, { tripId: 'trip_A' }, { tripId: 'trip_B' }];
+      const vOrder2 = [{ tripId: 'trip_A' }, { tripId: 'trip_C' }, { tripId: 'trip_B' }];
+
+      // Alphabetical sort: trip_A (1), trip_B (2), trip_C (3)
+      expect(getStableVehicleIndex('trip_A', vOrder1)).toBe(1);
+      expect(getStableVehicleIndex('trip_B', vOrder1)).toBe(2);
+      expect(getStableVehicleIndex('trip_C', vOrder1)).toBe(3);
+
+      expect(getStableVehicleIndex('trip_A', vOrder2)).toBe(1);
+      expect(getStableVehicleIndex('trip_B', vOrder2)).toBe(2);
+      expect(getStableVehicleIndex('trip_C', vOrder2)).toBe(3);
+    });
+
+    it('handles duplicate trip IDs gracefully', () => {
+      const vehicles = [{ tripId: 'trip_A' }, { tripId: 'trip_A' }, { tripId: 'trip_B' }];
+      expect(getStableVehicleIndex('trip_A', vehicles)).toBe(1);
+      expect(getStableVehicleIndex('trip_B', vehicles)).toBe(2);
+    });
+
+    it('falls back to 1 for unknown or empty input', () => {
+      expect(getStableVehicleIndex('trip_X', [])).toBe(1);
+      expect(getStableVehicleIndex('', [{ tripId: 'trip_A' }])).toBe(1);
+    });
+  });
+
+  describe('formatVehicleBadgeLabel', () => {
+    it('formats single bus as "Bus 1"', () => {
+      expect(formatVehicleBadgeLabel(1, 1)).toBe('Bus 1');
+    });
+
+    it('formats multiple buses as "Bus X of Y"', () => {
+      expect(formatVehicleBadgeLabel(1, 3)).toBe('Bus 1 of 3');
+      expect(formatVehicleBadgeLabel(2, 3)).toBe('Bus 2 of 3');
+    });
+  });
 });
+

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { X, Calendar, Info, Radio, Sparkles, ArrowRight, Bus, ChevronDown, Check } from 'lucide-react';
+import { X, Calendar, Info, Radio, Sparkles, ArrowRight, Bus, ChevronDown, Check, Table } from 'lucide-react';
 import type { RouteDetailsResponse, RouteStopItem } from '@basbuddy/shared';
 import { RouteEtaCalculator } from './RouteEtaCalculator.tsx';
 import { RouteVehiclesTab } from './RouteVehiclesTab.tsx';
@@ -13,9 +13,11 @@ interface RouteTimetableModalProps {
   onSelectStop?: (stopId: string) => void;
   selectedStopId?: string | null;
   initialDirectionIndex?: number;
+  selectedVehicleTripId?: string | null;
+  onSelectVehicle?: (tripId: string) => void;
 }
 
-type TimetableTab = 'timeline' | 'vehicles' | 'schedule' | 'calculator';
+type TimetableTab = 'timeline' | 'vehicles' | 'schedule' | 'matrix' | 'calculator';
 
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
@@ -93,6 +95,8 @@ export function RouteTimetableModal({
   onSelectStop,
   selectedStopId,
   initialDirectionIndex = 0,
+  selectedVehicleTripId,
+  onSelectVehicle,
 }: RouteTimetableModalProps) {
   const [activeTab, setActiveTab] = useState<TimetableTab>('timeline');
   const [activeDirectionIndex, setActiveDirectionIndex] = useState<number>(initialDirectionIndex);
@@ -263,6 +267,26 @@ export function RouteTimetableModal({
     });
   }, [activeStops, originDepartureTime, isFlatSchedule]);
 
+  // Precompute seconds offset from origin departure for each stop in activeStops for the matrix table
+  const stopOffsetsSec = useMemo(() => {
+    if (activeStops.length === 0) return [];
+    if (isFlatSchedule) {
+      let cumDistanceMeters = 0;
+      return activeStops.map((stop, idx) => {
+        if (idx === 0) return 0;
+        const prev = activeStops[idx - 1]!;
+        cumDistanceMeters += haversineMeters(prev.lat, prev.lon, stop.lat, stop.lon);
+        return Math.round(cumDistanceMeters / 6.11) + idx * 25;
+      });
+    }
+    const originSampleSec = parseTimeToSeconds(activeStops[0]?.scheduledTime || '06:00:00');
+    return activeStops.map((stop, idx) => {
+      if (idx === 0 || !stop.scheduledTime) return 0;
+      const stopSampleSec = parseTimeToSeconds(stop.scheduledTime);
+      return Math.max(0, stopSampleSec - originSampleSec);
+    });
+  }, [activeStops, isFlatSchedule]);
+
   const canDock = useCompanionDocking();
   const [tripDropdownOpen, setTripDropdownOpen] = useState(false);
   const tripDropdownRef = useRef<HTMLDivElement>(null);
@@ -423,6 +447,19 @@ export function RouteTimetableModal({
           >
             <Calendar className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate">Schedule</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('matrix')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-sans font-semibold transition-all ${
+              activeTab === 'matrix'
+                ? 'bg-[#F4A100] text-[#101B2D] shadow-md'
+                : 'text-[#FFF8EE]/70 hover:bg-white/5 hover:text-[#FFF8EE]'
+            }`}
+          >
+            <Table className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Matrix</span>
           </button>
 
           <button
@@ -653,6 +690,8 @@ export function RouteTimetableModal({
               dwellMinutesMap={dwellMinutesMap}
               onSelectStop={handleSelectStop}
               onSwitchTab={(tab) => setActiveTab(tab)}
+              selectedVehicleTripId={selectedVehicleTripId}
+              onSelectVehicle={onSelectVehicle}
             />
           </div>
         )}
@@ -781,7 +820,122 @@ export function RouteTimetableModal({
           </div>
         )}
 
-        {/* Tab 3: Trip Calculator */}
+        {/* Tab 4: Stops × Trips Matrix View */}
+        {activeTab === 'matrix' && (
+          <div className="flex-1 overflow-auto basbuddy-scroll min-h-0 relative p-3.5 space-y-3">
+            <div className="flex items-center justify-between text-xs font-sans text-[#FFF8EE]/70 px-1">
+              <span className="font-medium">
+                {activeStops.length} stops × {dirDepartures.length} trips
+              </span>
+              <span className="text-[11px] font-mono text-[#FFF8EE]/50">
+                Click trip to view in Timeline
+              </span>
+            </div>
+
+            {dirDepartures.length === 0 ? (
+              <div className="text-center py-8 px-4 rounded-2xl bg-white/[0.02] border border-white/5 my-2">
+                <p className="text-sm font-sans font-medium text-[#FFF8EE]">
+                  No scheduled trips found for this direction today
+                </p>
+                <p className="text-xs font-sans text-[#FFF8EE]/50 mt-1">
+                  Service may run on headway intervals or operate under alternate calendar schedules.
+                </p>
+              </div>
+            ) : (
+              <div className="border border-white/10 rounded-2xl overflow-hidden bg-[#101B2D]/90 shadow-xl">
+                <div className="overflow-x-auto basbuddy-scroll max-h-[60vh]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="sticky top-0 z-20 bg-[#182337] shadow-sm">
+                      <tr>
+                        <th className="sticky left-0 z-30 bg-[#182337] p-2.5 font-mono text-[11px] text-[#FFF8EE]/70 uppercase border-b border-r border-white/10 min-w-[160px] max-w-[200px]">
+                          Stop ({activeStops.length})
+                        </th>
+                        {dirDepartures.map((d) => {
+                          const isNext = d.tripId === nextDepartureTripId;
+                          return (
+                            <th
+                              key={d.tripId}
+                              onClick={() => {
+                                setSelectedTripId(d.tripId);
+                                setActiveTab('timeline');
+                              }}
+                              className={`p-2.5 text-center font-mono font-bold text-xs border-b border-white/10 whitespace-nowrap cursor-pointer hover:bg-white/10 transition-colors ${
+                                isNext
+                                  ? 'bg-[#F4A100]/20 text-[#F4A100] border-b-2 border-b-[#F4A100]'
+                                  : 'text-[#FFF8EE]'
+                              }`}
+                              title="Click to view this trip in Timeline"
+                            >
+                              <div className="flex flex-col items-center">
+                                <span>{formatTimeDisplay(d.departureTime)}</span>
+                                {isNext && (
+                                  <span className="text-[9px] font-sans font-extrabold px-1.5 py-0.2 rounded-full bg-[#F4A100] text-[#101B2D] mt-0.5 shadow-sm">
+                                    NEXT
+                                  </span>
+                                )}
+                              </div>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {activeStops.map((stop, rowIdx) => {
+                        const isSelectedStop = stop.stopId === selectedStopId;
+                        return (
+                          <tr
+                            key={stop.stopId || `row-${rowIdx}`}
+                            className={isSelectedStop ? 'bg-[#F4A100]/10' : 'hover:bg-white/[0.02]'}
+                          >
+                            <td
+                              onClick={() => handleSelectStop(stop.stopId)}
+                              className={`sticky left-0 z-10 p-2 text-xs font-sans border-r border-white/10 truncate cursor-pointer ${
+                                isSelectedStop
+                                  ? 'bg-[#182337] text-[#F4A100] font-bold'
+                                  : 'bg-[#101B2D] text-[#FFF8EE]'
+                              }`}
+                              title={`${stop.stopSequence}. ${stop.stopName} (click to inspect)`}
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-[10px] font-mono text-[#FFF8EE]/40 w-4 shrink-0 text-right">
+                                  {stop.stopSequence}
+                                </span>
+                                <span className="truncate">
+                                  {stop.stopName}
+                                </span>
+                              </div>
+                            </td>
+                            {dirDepartures.map((d) => {
+                              const depSec = parseTimeToSeconds(d.departureTime);
+                              const arrSec = depSec + (stopOffsetsSec[rowIdx] ?? 0);
+                              const isNext = d.tripId === nextDepartureTripId;
+                              return (
+                                <td
+                                  key={d.tripId}
+                                  onClick={() => {
+                                    setSelectedTripId(d.tripId);
+                                    handleSelectStop(stop.stopId);
+                                  }}
+                                  className={`p-2 text-center font-mono text-[11px] whitespace-nowrap cursor-pointer hover:bg-white/5 transition-colors ${
+                                    isNext ? 'bg-[#F4A100]/5 text-[#F4A100] font-semibold' : 'text-[#FFF8EE]/80'
+                                  }`}
+                                >
+                                  {secondsToTimeString(arrSec)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 5: Trip Calculator */}
         {activeTab === 'calculator' && (
           <div className="flex-1 overflow-y-auto p-3.5 basbuddy-scroll min-h-0">
             <RouteEtaCalculator

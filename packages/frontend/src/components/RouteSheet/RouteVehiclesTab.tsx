@@ -6,7 +6,10 @@ import {
   findVehicleStopProgress,
   getVehicleMovementState,
   formatRelativeGpsAge,
+  getStableVehicleIndex,
+  formatVehicleBadgeLabel,
 } from '../../utils/vehicleStatus.ts';
+import { isVehicleOffCourse } from '../../utils/geoUtils.ts';
 
 interface RouteVehiclesTabProps {
   routeData: RouteDetailsResponse;
@@ -15,6 +18,8 @@ interface RouteVehiclesTabProps {
   dwellMinutesMap: Map<string, number>;
   onSelectStop?: (stopId: string) => void;
   onSwitchTab?: (tab: 'timeline' | 'schedule') => void;
+  selectedVehicleTripId?: string | null;
+  onSelectVehicle?: (tripId: string) => void;
 }
 
 export function RouteVehiclesTab({
@@ -24,6 +29,8 @@ export function RouteVehiclesTab({
   dwellMinutesMap,
   onSelectStop,
   onSwitchTab,
+  selectedVehicleTripId,
+  onSelectVehicle,
 }: RouteVehiclesTabProps) {
   const [filterMode, setFilterMode] = useState<'direction' | 'all'>('direction');
 
@@ -165,14 +172,18 @@ export function RouteVehiclesTab({
         <div className="space-y-2.5">
           {displayedVehicles.map((vehicle, idx) => {
             const dwellMinutes = dwellMinutesMap.get(vehicle.tripId) ?? 0;
-            const movementState = getVehicleMovementState(dwellMinutes, vehicle.speedKmh);
-            const relativeGps = formatRelativeGpsAge(vehicle.timestamp);
-
-            // Resolve matching direction per vehicle for accurate headsign & sequence in All Buses mode
             const vehicleDir =
               vehicle.directionId !== undefined && vehicle.directionId !== null
                 ? directions.find((d) => d.directionId === vehicle.directionId)
                 : directions.find((d) => d.stops?.some((s) => s.stopId === vehicle.nearestStopId)) ?? activeDirection;
+
+            const vehicleShapes =
+              vehicleDir?.shapes && vehicleDir.shapes.length > 0
+                ? vehicleDir.shapes
+                : routeData.shapes;
+            const isOffCourse = isVehicleOffCourse(vehicle.lat, vehicle.lon, vehicleShapes, 200);
+            const movementState = getVehicleMovementState(dwellMinutes, vehicle.speedKmh, isOffCourse);
+            const relativeGps = formatRelativeGpsAge(vehicle.timestamp);
 
             const vehicleHeadsign = vehicleDir?.tripHeadsign || activeDirection?.tripHeadsign || `Bus ${idx + 1}`;
             const vehicleDirStops = vehicleDir?.stops && vehicleDir.stops.length > 0 ? vehicleDir.stops : activeStops;
@@ -181,21 +192,40 @@ export function RouteVehiclesTab({
             const isLive = vehicle.freshness === 'live';
             const isStale = vehicle.freshness === 'stale';
 
+            const stableIndex = getStableVehicleIndex(vehicle.tripId, allVehicles);
+            const vehicleLabel = formatVehicleBadgeLabel(stableIndex, allVehicles.length);
+            const isSelected = selectedVehicleTripId === vehicle.tripId;
+
             return (
               <div
                 key={vehicle.tripId || `bus-${idx}`}
-                onClick={() => vehicle.nearestStopId && onSelectStop && onSelectStop(vehicle.nearestStopId)}
-                className="group relative p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all cursor-pointer text-[#FFF8EE] space-y-2"
+                onClick={() => {
+                  if (onSelectVehicle) onSelectVehicle(vehicle.tripId);
+                  if (vehicle.nearestStopId && onSelectStop) onSelectStop(vehicle.nearestStopId);
+                }}
+                className={`group relative p-3 rounded-2xl border transition-all cursor-pointer text-[#FFF8EE] space-y-2 ${
+                  isSelected
+                    ? 'bg-white/15 border-[#F4A100] ring-2 ring-[#F4A100]/50 shadow-lg'
+                    : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20'
+                }`}
                 data-testid={`vehicle-card-${vehicle.tripId}`}
               >
                 {/* Header Row: Destination / Trip identifier & Freshness */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#F4A100] text-[#101B2D] font-display font-bold text-xs shrink-0 shadow-sm">
-                      {routeData.routeShortName}
+                    <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#F4A100] text-[#101B2D] font-mono font-bold text-xs shrink-0 shadow-sm">
+                      #{stableIndex}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-sans font-bold text-[#FFF8EE] truncate">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="text-xs font-sans font-bold text-[#FFF8EE] truncate">
+                          {vehicleLabel}
+                        </span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-[#FFF8EE]/70 shrink-0">
+                          {routeData.routeShortName}
+                        </span>
+                      </div>
+                      <div className="text-[11px] font-sans text-[#FFF8EE]/60 truncate">
                         {vehicleHeadsign}
                       </div>
                       <div className="text-[10px] font-mono text-[#FFF8EE]/40 truncate">
