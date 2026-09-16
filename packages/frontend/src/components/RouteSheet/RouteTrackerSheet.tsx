@@ -1,10 +1,13 @@
 import { useState, useMemo } from 'react';
-import { X, Navigation, Radio, Star, Calendar, Clock, AlertCircle, ChevronUp, ChevronDown, Search } from 'lucide-react';
+import { X, Navigation, Radio, Star, Calendar, Clock, AlertCircle, ChevronUp, ChevronDown, Search, Share2 } from 'lucide-react';
 import type { RouteDetailsResponse } from '@basbuddy/shared';
 import { useFavorites } from '../../hooks/useFavorites.ts';
 import { RouteTimetableModal } from './RouteTimetableModal.tsx';
 import { getServiceBadge } from '../../utils/serviceBadges.ts';
 import { filterRouteStops } from '../../utils/routeStopsFilter.ts';
+import { BRAND_CONFIG } from '../../config/branding.ts';
+import { toast } from '../Toast/Toast.tsx';
+import { tapFeedback } from '../../utils/haptics.ts';
 
 interface RouteTrackerSheetProps {
   routeData: RouteDetailsResponse | null;
@@ -12,6 +15,8 @@ interface RouteTrackerSheetProps {
   onClose: () => void;
   onSelectStop: (stopId: string) => void;
   selectedStopId?: string | null;
+  selectedVehicleTripId?: string | null;
+  onSelectVehicle?: (tripId: string) => void;
 }
 
 export function RouteTrackerSheet({
@@ -20,6 +25,8 @@ export function RouteTrackerSheet({
   onClose,
   onSelectStop,
   selectedStopId,
+  selectedVehicleTripId,
+  onSelectVehicle,
 }: RouteTrackerSheetProps) {
   const [activeDirectionIndex, setActiveDirectionIndex] = useState(0);
   const [timetableOpen, setTimetableOpen] = useState(false);
@@ -39,13 +46,43 @@ export function RouteTrackerSheet({
 
   const handleToggleFavorite = async () => {
     if (!routeData) return;
+    tapFeedback(15);
     if (existingRouteFav) {
       await removeFavorite(existingRouteFav.id);
+      toast.info('Removed route from favorites');
     } else {
       await addFavorite({
         routeId: routeData.routeId,
         label: `Route ${routeData.routeShortName}`,
       });
+      toast.success('Route saved to favorites!');
+    }
+  };
+
+  const handleShare = async () => {
+    if (!routeData) return;
+    tapFeedback(15);
+    const url = `${window.location.origin}/?route=${routeData.routeId}`;
+    const shareData = {
+      title: `${BRAND_CONFIG.brandName} - Route ${routeData.routeShortName}`,
+      text: `Live tracking for Route ${routeData.routeShortName} (${routeData.routeLongName}) on ${BRAND_CONFIG.brandName}`,
+      url,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch {
+        // Fallback to clipboard
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Route link copied to clipboard!');
+    } catch {
+      toast.error('Unable to copy link to clipboard');
     }
   };
 
@@ -120,6 +157,8 @@ export function RouteTrackerSheet({
             onSelectStop={onSelectStop}
             selectedStopId={selectedStopId}
             initialDirectionIndex={activeDirectionIndex}
+            selectedVehicleTripId={selectedVehicleTripId}
+            onSelectVehicle={onSelectVehicle}
           />
         )}
       </>
@@ -170,18 +209,29 @@ export function RouteTrackerSheet({
 
           <div className="flex items-center gap-1 shrink-0">
             {routeData && (
-              <button
-                type="button"
-                onClick={handleToggleFavorite}
-                aria-label={isFavorite ? 'Remove route from favorites' : 'Save route to favorites'}
-                className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all active:scale-95 ${
-                  isFavorite
-                    ? 'bg-[#F4A100]/20 border-[#F4A100]/50 text-[#F4A100]'
-                    : 'bg-white/5 border-white/10 text-[#FFF8EE]/70 hover:bg-white/10 hover:text-[#FFF8EE]'
-                }`}
-              >
-                <Star className={`w-4 h-4 ${isFavorite ? 'fill-[#F4A100]' : ''}`} />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  aria-label="Share route link"
+                  title="Share route link"
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5 border border-white/10 text-[#FFF8EE]/70 hover:bg-white/10 hover:text-[#FFF8EE] transition-all active:scale-95"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleFavorite}
+                  aria-label={isFavorite ? 'Remove route from favorites' : 'Save route to favorites'}
+                  className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all active:scale-95 ${
+                    isFavorite
+                      ? 'bg-[#F4A100]/20 border-[#F4A100]/50 text-[#F4A100]'
+                      : 'bg-white/5 border-white/10 text-[#FFF8EE]/70 hover:bg-white/10 hover:text-[#FFF8EE]'
+                  }`}
+                >
+                  <Star className={`w-4 h-4 ${isFavorite ? 'fill-[#F4A100]' : ''}`} />
+                </button>
+              </>
             )}
 
             <button
@@ -393,6 +443,8 @@ export function RouteTrackerSheet({
           onSelectStop={onSelectStop}
           selectedStopId={selectedStopId}
           initialDirectionIndex={activeDirectionIndex}
+          selectedVehicleTripId={selectedVehicleTripId}
+          onSelectVehicle={onSelectVehicle}
         />
       )}
     </>

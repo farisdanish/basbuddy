@@ -9,6 +9,7 @@ interface SearchHeaderProps {
   onOpenDrawer?: () => void;
   onResetView?: () => void;
   systemStatus: SystemHealthStatus;
+  pollerAgeSeconds?: number | null;
 }
 
 export function SearchHeader({
@@ -17,6 +18,7 @@ export function SearchHeader({
   onOpenDrawer,
   onResetView,
   systemStatus,
+  pollerAgeSeconds,
 }: SearchHeaderProps) {
   return (
     <header className="absolute top-4 left-4 right-4 z-20 pointer-events-none flex items-center justify-between gap-3 max-w-4xl mx-auto">
@@ -57,28 +59,31 @@ export function SearchHeader({
 
       {/* ── Search Bar & Status Cluster ──────────────────────────────────────── */}
       <div className="pointer-events-auto flex-1 max-w-md mx-auto md:mx-0 w-full flex items-center justify-between gap-2 h-12 px-2.5 sm:px-3.5 rounded-2xl bg-[#182337]/90 border border-white/10 shadow-2xl backdrop-blur-md transition-all">
-        {/* Mobile Drawer / Brand Button */}
-        {onOpenDrawer ? (
-          <button
-            type="button"
-            onClick={onOpenDrawer}
-            aria-label="Open navigation drawer"
-            title="Open transit navigation & hubs directory"
-            className="flex md:hidden items-center justify-center w-8 h-8 rounded-xl bg-white/10 text-[#FFF8EE] hover:bg-[#F4A100] hover:text-[#101B2D] shadow-sm active:scale-95 transition-all shrink-0"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onResetView}
-            aria-label={`Reset view to ${BRAND_CONFIG.brandName} home`}
-            title={`Reset view to ${BRAND_CONFIG.brandName}`}
-            className="flex md:hidden items-center justify-center w-8 h-8 rounded-xl bg-[#F4A100] text-[#101B2D] font-display font-bold text-xs shadow-sm active:scale-95 hover:brightness-110 transition-all shrink-0"
-          >
-            <Bus className="w-4 h-4 text-[#101B2D]" />
-          </button>
-        )}
+        {/* Mobile Drawer and Brand Reset Buttons */}
+        <div className="flex md:hidden items-center gap-1.5 shrink-0">
+          {onOpenDrawer && (
+            <button
+              type="button"
+              onClick={onOpenDrawer}
+              aria-label="Open navigation drawer"
+              title="Open transit navigation & hubs directory"
+              className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/10 text-[#FFF8EE] hover:bg-[#F4A100] hover:text-[#101B2D] shadow-sm active:scale-95 transition-all shrink-0"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          )}
+          {onResetView && (
+            <button
+              type="button"
+              onClick={onResetView}
+              aria-label={`Reset view to ${BRAND_CONFIG.brandName} home`}
+              title={`Reset view to ${BRAND_CONFIG.brandName}`}
+              className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#F4A100] text-[#101B2D] font-display font-bold text-xs shadow-sm active:scale-95 hover:brightness-110 transition-all shrink-0"
+            >
+              <Bus className="w-4 h-4 text-[#101B2D]" />
+            </button>
+          )}
+        </div>
 
         {/* Clickable search area */}
         <button
@@ -95,7 +100,7 @@ export function SearchHeader({
 
         {/* Right action cluster: Status Pill + Info Button */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <HealthIndicatorBadge status={systemStatus} />
+          <HealthIndicatorBadge status={systemStatus} ageSeconds={pollerAgeSeconds} />
           {onOpenInfo && (
             <button
               type="button"

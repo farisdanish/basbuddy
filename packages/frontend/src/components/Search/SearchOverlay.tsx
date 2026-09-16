@@ -42,7 +42,10 @@ export function SearchOverlay({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#101B2D]/95 backdrop-blur-xl animate-in fade-in duration-200">
+    <div
+      data-testid="search-overlay"
+      className="fixed inset-0 z-50 flex flex-col bg-[#101B2D]/95 backdrop-blur-xl animate-in fade-in duration-200"
+    >
       {/* Top Search Bar */}
       <div className="flex items-center gap-3 p-4 border-b border-white/10">
         <button

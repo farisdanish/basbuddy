@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 import { Github } from 'lucide-react';
 import { useGeolocation } from './hooks/useGeolocation.ts';
@@ -10,6 +10,7 @@ import { smoothFlyTo, getTargetCenter, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } fr
 
 import { StopMarkersLayer } from './components/Map/StopMarkersLayer.tsx';
 import { VehicleMarkersLayer } from './components/Map/VehicleMarkersLayer.tsx';
+import { VehicleTrailsLayer } from './components/Map/VehicleTrailsLayer.tsx';
 import { RoutePolylineLayer } from './components/Map/RoutePolylineLayer.tsx';
 import { UserLocationMarker } from './components/Map/UserLocationMarker.tsx';
 import { RecenterButton } from './components/Map/RecenterButton.tsx';
@@ -25,6 +26,7 @@ import { FavoritesList } from './components/FavoritesList/FavoritesList.tsx';
 import { FavoritesModal } from './components/FavoritesList/FavoritesModal.tsx';
 import { InfoModal, type InfoTabType } from './components/Info/InfoModal.tsx';
 import { NavigationDrawer } from './components/NavigationDrawer/NavigationDrawer.tsx';
+import { ToastContainer } from './components/Toast/Toast.tsx';
 import type { TransitHub } from './utils/transitHubs.ts';
 
 // ── Time-of-day gradient (§11 signature element) ──────────────────────────────
@@ -44,6 +46,29 @@ function MapViewportSync({ onCenterChange }: { onCenterChange: (center: [number,
       onCenterChange([c.lat, c.lng]);
     },
   });
+  return null;
+}
+
+const LAST_VIEWED_KEY = 'basbuddy:lastViewed';
+const LAST_VIEWED_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+interface LastViewedState {
+  routeId: string | null;
+  stopId: string | null;
+  timestamp: number;
+}
+
+function getSavedLastViewed(): LastViewedState | null {
+  try {
+    const raw = localStorage.getItem(LAST_VIEWED_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LastViewedState;
+    if (Date.now() - parsed.timestamp < LAST_VIEWED_MAX_AGE_MS) {
+      return parsed;
+    }
+  } catch {
+    // Ignore corrupt storage
+  }
   return null;
 }
 
@@ -81,9 +106,26 @@ export default function App() {
   const [selectedStopId, setSelectedStopId] = useState<string | null>(() => {
     // Support URL ?stop=KL1081 query param
     const params = new URLSearchParams(window.location.search);
-    return params.get('stop');
+    const stopParam = params.get('stop');
+    if (stopParam) return stopParam;
+    if (!params.get('route')) {
+      const saved = getSavedLastViewed();
+      if (saved?.stopId) return saved.stopId;
+    }
+    return null;
   });
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(() => {
+    // Support URL ?route=1000001 query param
+    const params = new URLSearchParams(window.location.search);
+    const routeParam = params.get('route');
+    if (routeParam) return routeParam;
+    if (!params.get('stop')) {
+      const saved = getSavedLastViewed();
+      if (saved?.routeId) return saved.routeId;
+    }
+    return null;
+  });
+  const [selectedVehicleTripId, setSelectedVehicleTripId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [favoritesModalOpen, setFavoritesModalOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -94,17 +136,133 @@ export default function App() {
   const { data: routeData, loading: routeLoading } = useRouteDetails(selectedRouteId);
   const health = useSystemHealth();
 
+  // History management for mobile back gesture (Task #18)
+  const historyDepthRef = useRef(0);
+  const isHandlingBackViaUi = useRef(false);
+
+  const pushOverlayHistory = useCallback(() => {
+    historyDepthRef.current += 1;
+    window.history.pushState({ basbuddyOverlay: true }, '');
+  }, []);
+
+  const handleCloseWithHistory = useCallback((closeFn: () => void) => {
+    closeFn();
+    if (historyDepthRef.current > 0) {
+      isHandlingBackViaUi.current = true;
+      window.history.back();
+    }
+  }, []);
+
+  // Popstate listener for mobile back gestures
+  useEffect(() => {
+    const handlePopState = () => {
+      if (historyDepthRef.current > 0) {
+        historyDepthRef.current -= 1;
+      }
+      if (isHandlingBackViaUi.current) {
+        isHandlingBackViaUi.current = false;
+        return;
+      }
+
+      // Close topmost active overlay in priority order
+      if (infoModalTab !== null) {
+        setInfoModalTab(null);
+      } else if (searchOpen) {
+        setSearchOpen(false);
+      } else if (favoritesModalOpen) {
+        setFavoritesModalOpen(false);
+      } else if (drawerOpen) {
+        setDrawerOpen(false);
+      } else if (selectedStopId !== null) {
+        setSelectedStopId(null);
+      } else if (selectedRouteId !== null) {
+        setSelectedRouteId(null);
+        setSelectedVehicleTripId(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [infoModalTab, searchOpen, favoritesModalOpen, drawerOpen, selectedStopId, selectedRouteId]);
+
+  // URL sync for ?route= and ?stop= (Task #19)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    let changed = false;
+
+    if (selectedRouteId) {
+      if (params.get('route') !== selectedRouteId) {
+        params.set('route', selectedRouteId);
+        changed = true;
+      }
+    } else if (params.has('route')) {
+      params.delete('route');
+      changed = true;
+    }
+
+    if (selectedStopId) {
+      if (params.get('stop') !== selectedStopId) {
+        params.set('stop', selectedStopId);
+        changed = true;
+      }
+    } else if (params.has('stop')) {
+      params.delete('stop');
+      changed = true;
+    }
+
+    if (changed) {
+      const newQuery = params.toString();
+      const newUrl = newQuery ? `${window.location.pathname}?${newQuery}` : window.location.pathname;
+      window.history.replaceState(null, '', newUrl);
+    }
+  }, [selectedRouteId, selectedStopId]);
+
+  // Persist last viewed stop/route to localStorage (Task #22)
+  useEffect(() => {
+    if (selectedRouteId || selectedStopId) {
+      try {
+        localStorage.setItem(
+          LAST_VIEWED_KEY,
+          JSON.stringify({
+            routeId: selectedRouteId,
+            stopId: selectedStopId,
+            timestamp: Date.now(),
+          }),
+        );
+      } catch {
+        // Ignore quota limits
+      }
+    }
+  }, [selectedRouteId, selectedStopId]);
+
   const handleCenterChange = useCallback((newCenter: [number, number]) => {
     setMapCenter(newCenter);
   }, []);
 
   const handleSelectStop = useCallback((stopId: string) => {
+    if (!selectedStopId) {
+      pushOverlayHistory();
+    }
     setSelectedStopId(stopId);
-  }, []);
+  }, [selectedStopId, pushOverlayHistory]);
 
   const handleSelectRoute = useCallback((routeId: string) => {
+    if (!selectedRouteId) {
+      pushOverlayHistory();
+    }
     setSelectedRouteId(routeId);
-  }, []);
+    setSelectedVehicleTripId(null);
+  }, [selectedRouteId, pushOverlayHistory]);
+
+  const handleSelectVehicle = useCallback((tripId: string) => {
+    setSelectedVehicleTripId(tripId);
+    if (routeData?.vehicles) {
+      const v = routeData.vehicles.find((veh) => veh.tripId === tripId);
+      if (v && window.__leafletMap) {
+        smoothFlyTo(window.__leafletMap, [v.lat, v.lon], 16, 1.2, true);
+      }
+    }
+  }, [routeData?.vehicles]);
 
   const handleSelectHub = useCallback((hub: TransitHub) => {
     setMapCenter([hub.lat, hub.lon]);
@@ -116,6 +274,8 @@ export default function App() {
   const handleResetView = useCallback(() => {
     setSelectedRouteId(null);
     setSelectedStopId(null);
+    setSelectedVehicleTripId(null);
+    historyDepthRef.current = 0;
     const target = getTargetCenter(position, DEFAULT_MAP_CENTER);
     if (window.__leafletMap) {
       smoothFlyTo(window.__leafletMap, target, DEFAULT_MAP_ZOOM, 1.2, true);
@@ -153,21 +313,37 @@ export default function App() {
           selectedStopId={selectedStopId}
           onSelectStop={handleSelectStop}
         />
+        <VehicleTrailsLayer
+          routeId={selectedRouteId}
+          vehicles={routeData?.vehicles ?? []}
+        />
         <VehicleMarkersLayer
           routeId={selectedRouteId}
           vehicles={routeData?.vehicles ?? []}
           routeShortName={routeData?.routeShortName}
+          selectedVehicleTripId={selectedVehicleTripId}
+          onSelectVehicle={handleSelectVehicle}
         />
         <RecenterButton position={position} defaultCenter={DEFAULT_MAP_CENTER} />
       </MapContainer>
 
       {/* ── Top Floating Search & System Status ─────────────────────────────── */}
       <SearchHeader
-        onOpenSearch={() => setSearchOpen(true)}
-        onOpenInfo={() => setInfoModalTab('about')}
-        onOpenDrawer={() => setDrawerOpen(true)}
+        onOpenSearch={() => {
+          pushOverlayHistory();
+          setSearchOpen(true);
+        }}
+        onOpenInfo={() => {
+          pushOverlayHistory();
+          setInfoModalTab('about');
+        }}
+        onOpenDrawer={() => {
+          pushOverlayHistory();
+          setDrawerOpen(true);
+        }}
         onResetView={handleResetView}
         systemStatus={health.status}
+        pollerAgeSeconds={health.pollerAgeSeconds}
       />
 
       {/* ── Active Route Inspector Floating Card ─────────────────────────────── */}
@@ -175,9 +351,16 @@ export default function App() {
         <RouteTrackerSheet
           routeData={routeData}
           loading={routeLoading}
-          onClose={() => setSelectedRouteId(null)}
+          onClose={() => {
+            handleCloseWithHistory(() => {
+              setSelectedRouteId(null);
+              setSelectedVehicleTripId(null);
+            });
+          }}
           onSelectStop={handleSelectStop}
           selectedStopId={selectedStopId}
+          selectedVehicleTripId={selectedVehicleTripId}
+          onSelectVehicle={handleSelectVehicle}
         />
       )}
 
@@ -187,20 +370,37 @@ export default function App() {
       {/* ── Navigation Drawer & Hubs Directory ──────────────────────────────── */}
       <NavigationDrawer
         isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          handleCloseWithHistory(() => setDrawerOpen(false));
+        }}
         selectedAgencyId={selectedAgencyId}
         onSelectAgency={setSelectedAgencyId}
         onSelectHub={handleSelectHub}
-        onOpenFavorites={() => setFavoritesModalOpen(true)}
-        onOpenAbout={() => setInfoModalTab('about')}
+        onOpenFavorites={() => {
+          setDrawerOpen(false);
+          setFavoritesModalOpen(true);
+        }}
+        onOpenAbout={() => {
+          setDrawerOpen(false);
+          setInfoModalTab('about');
+        }}
+        onResetView={handleResetView}
       />
 
       {/* ── Search Modal Overlay ────────────────────────────────────────────── */}
       <SearchOverlay
         isOpen={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onSelectStop={handleSelectStop}
-        onSelectRoute={handleSelectRoute}
+        onClose={() => {
+          handleCloseWithHistory(() => setSearchOpen(false));
+        }}
+        onSelectStop={(stopId) => {
+          setSearchOpen(false);
+          handleSelectStop(stopId);
+        }}
+        onSelectRoute={(routeId) => {
+          setSearchOpen(false);
+          handleSelectRoute(routeId);
+        }}
         userLocation={position}
       />
 
@@ -211,21 +411,28 @@ export default function App() {
           selectedRouteId={selectedRouteId}
           onSelectStop={handleSelectStop}
           onSelectRoute={handleSelectRoute}
-          onOpenModal={() => setFavoritesModalOpen(true)}
+          onOpenModal={() => {
+            pushOverlayHistory();
+            setFavoritesModalOpen(true);
+          }}
         />
       </div>
 
       {/* ── Interactive Stop Detail Bottom Sheet ────────────────────────────── */}
       <StopSheet
         stopId={selectedStopId}
-        onClose={() => setSelectedStopId(null)}
+        onClose={() => {
+          handleCloseWithHistory(() => setSelectedStopId(null));
+        }}
         onSelectRoute={handleSelectRoute}
       />
 
       {/* ── Favorites Manager Modal Dialog ──────────────────────────────────── */}
       <FavoritesModal
         isOpen={favoritesModalOpen}
-        onClose={() => setFavoritesModalOpen(false)}
+        onClose={() => {
+          handleCloseWithHistory(() => setFavoritesModalOpen(false));
+        }}
         onSelectStop={handleSelectStop}
         onSelectRoute={handleSelectRoute}
         selectedStopId={selectedStopId}
@@ -236,7 +443,9 @@ export default function App() {
       <InfoModal
         isOpen={infoModalTab !== null}
         initialTab={infoModalTab ?? 'about'}
-        onClose={() => setInfoModalTab(null)}
+        onClose={() => {
+          handleCloseWithHistory(() => setInfoModalTab(null));
+        }}
       />
 
       {/* ── CC BY 4.0 Attribution & Footer Links ────────────────────────────── */}
@@ -258,7 +467,10 @@ export default function App() {
         <span className="hidden sm:inline">·</span>
         <button
           type="button"
-          onClick={() => setInfoModalTab('about')}
+          onClick={() => {
+            pushOverlayHistory();
+            setInfoModalTab('about');
+          }}
           className="hidden sm:inline pointer-events-auto underline hover:text-[#F4A100] transition-colors"
         >
           About
@@ -266,7 +478,10 @@ export default function App() {
         <span className="hidden sm:inline">·</span>
         <button
           type="button"
-          onClick={() => setInfoModalTab('faq')}
+          onClick={() => {
+            pushOverlayHistory();
+            setInfoModalTab('faq');
+          }}
           className="hidden sm:inline pointer-events-auto underline hover:text-[#F4A100] transition-colors"
         >
           FAQ
@@ -274,12 +489,18 @@ export default function App() {
         <span className="hidden sm:inline">·</span>
         <button
           type="button"
-          onClick={() => setInfoModalTab('feedback')}
+          onClick={() => {
+            pushOverlayHistory();
+            setInfoModalTab('feedback');
+          }}
           className="hidden sm:inline pointer-events-auto underline hover:text-[#F4A100] transition-colors"
         >
           Feedback
         </button>
       </footer>
+
+      {/* ── Toast Notifications ────────────────────────────────────────────── */}
+      <ToastContainer />
     </div>
   );
 }

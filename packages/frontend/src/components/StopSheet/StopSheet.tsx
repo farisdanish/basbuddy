@@ -6,6 +6,8 @@ import { useStopEtas } from '../../hooks/useStopEtas.ts';
 import { useStopTimetable } from '../../hooks/useStopTimetable.ts';
 import { useFavorites } from '../../hooks/useFavorites.ts';
 import { BRAND_CONFIG } from '../../config/branding.ts';
+import { toast } from '../Toast/Toast.tsx';
+import { tapFeedback } from '../../utils/haptics.ts';
 import { ArrivalRow } from './ArrivalRow.tsx';
 
 interface StopSheetProps {
@@ -28,18 +30,22 @@ export function StopSheet({ stopId, onClose, onSelectRoute }: StopSheetProps) {
 
   const handleToggleFavorite = async () => {
     if (!stopId) return;
+    tapFeedback(15);
     if (existingFav) {
       await removeFavorite(existingFav.id);
+      toast.info('Removed from favorites');
     } else {
       await addFavorite({
         stopId,
-        label: data?.stopName || `Stop ${stopId}`,
+        label: data?.stopName || timetableData?.stopName || `Stop ${stopId}`,
       });
+      toast.success('Saved to favorites!');
     }
   };
 
   const handleShare = async () => {
     if (!stopId) return;
+    tapFeedback(15);
     const url = `${window.location.origin}/?stop=${stopId}`;
     const shareData = {
       title: `${BRAND_CONFIG.brandName} - Stop ${data?.stopName || stopId}`,
@@ -59,9 +65,10 @@ export function StopSheet({ stopId, onClose, onSelectRoute }: StopSheetProps) {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      toast.success('Stop link copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Ignored
+      toast.error('Unable to copy link to clipboard');
     }
   };
 

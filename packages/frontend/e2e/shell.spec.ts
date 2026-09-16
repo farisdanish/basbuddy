@@ -94,17 +94,10 @@ test.describe('Frontend Shell (M5)', () => {
     expect(classAttr).toContain('w-full');
   });
 
-  test('renders header brand badge and handles view reset action', async ({ page }, testInfo) => {
-    // Known gap: on narrow viewports SearchHeader's mobile brand slot renders the
-    // NavigationDrawer trigger instead of the reset button whenever `onOpenDrawer`
-    // is provided (see SearchHeader.tsx), which it always is post-task-#10 — so
-    // "reset view" currently has no mobile-reachable affordance at all. This is a
-    // desktop-only assertion until that's given a mobile equivalent.
-    test.skip(testInfo.project.name === 'mobile-chrome', 'Brand/reset button only renders in the desktop header slot; mobile slot is occupied by the NavigationDrawer trigger.');
-
+  test('renders header brand badge and handles view reset action', async ({ page }) => {
     await page.goto('/');
 
-    // Verify brand button is visible in header
+    // Verify brand button is visible in header (on both desktop and mobile viewports)
     const brandBtn = page.getByRole('button', { name: /Reset view to BasBuddy home/i }).first();
     await expect(brandBtn).toBeVisible();
 

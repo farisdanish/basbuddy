@@ -27,6 +27,7 @@ export interface NavigationDrawerProps {
   onSelectHub: (hub: TransitHub) => void;
   onOpenFavorites: () => void;
   onOpenAbout: () => void;
+  onResetView?: () => void;
 }
 
 export function NavigationDrawer({
@@ -37,6 +38,7 @@ export function NavigationDrawer({
   onSelectHub,
   onOpenFavorites,
   onOpenAbout,
+  onResetView,
 }: NavigationDrawerProps) {
   const [hubSearchQuery, setHubSearchQuery] = useState('');
 
@@ -96,6 +98,32 @@ export function NavigationDrawer({
 
         {/* Drawer Body Scroll Area */}
         <div className="flex-1 overflow-y-auto basbuddy-scroll p-4 space-y-6">
+          {/* Quick Home / Reset Map Action */}
+          {onResetView && (
+            <button
+              type="button"
+              onClick={() => {
+                onResetView();
+                onClose();
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-[#F4A100]/15 border border-white/10 hover:border-[#F4A100]/40 transition-all text-left group active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#F4A100] text-[#101B2D] font-bold shadow-sm group-hover:scale-105 transition-transform">
+                  <Bus className="w-4 h-4 text-[#101B2D]" />
+                </div>
+                <div>
+                  <div className="text-xs font-sans font-bold text-[#FFF8EE] group-hover:text-[#F4A100] transition-colors">
+                    Reset Map to Home
+                  </div>
+                  <div className="text-[10px] font-sans text-[#FFF8EE]/50">
+                    Center on your GPS or {BRAND_CONFIG.brandName} home view
+                  </div>
+                </div>
+              </div>
+            </button>
+          )}
+
           {/* Section 1: Agency & Service Filter */}
           <section aria-labelledby="agency-filter-heading">
             <div className="flex items-center gap-1.5 mb-2.5">

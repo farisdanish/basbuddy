@@ -400,28 +400,40 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
     const vehiclesTab = timetableDialog.getByTestId('route-vehicles-tab');
     await expect(vehiclesTab).toBeVisible();
 
-    // Default "This Direction Only" view shows direction 0 vehicle with its headsign and speed badge
+    // Default "This Direction Only" view shows direction 0 vehicle with its headsign, stable number, and speed badge
     const card1 = vehiclesTab.getByTestId('vehicle-card-TRIP-750-1');
     await expect(card1).toContainText('Seksyen 2 Shah Alam');
     await expect(card1).toContainText('Cruising (42 km/h)');
+    await expect(card1).toContainText('#1');
+    await expect(card1).toContainText('Bus 1 of 2');
 
     // Toggle to "All Buses" view
     const allBusesToggle = vehiclesTab.getByRole('button', { name: /All Buses/i });
     await expect(allBusesToggle).toBeVisible();
     await allBusesToggle.click();
 
-    // Verify both vehicles are visible with their respective true direction headsigns and speed badges
+    // Verify both vehicles are visible with their respective true direction headsigns, stable numbers, and speed badges
     await expect(vehiclesTab.getByTestId('vehicle-card-TRIP-750-1')).toContainText('Seksyen 2 Shah Alam');
     await expect(vehiclesTab.getByTestId('vehicle-card-TRIP-750-1')).toContainText('Cruising (42 km/h)');
+    await expect(vehiclesTab.getByTestId('vehicle-card-TRIP-750-1')).toContainText('#1');
 
     const card2 = vehiclesTab.getByTestId('vehicle-card-TRIP-750-2');
     await expect(card2).toContainText('Hab Pasar Seni');
     await expect(card2).toContainText('Slow Traffic (9 km/h)');
+    await expect(card2).toContainText('#2');
+    await expect(card2).toContainText('Bus 2 of 2');
 
     // Switch to Daily Schedule tab
     const scheduleTabBtn = timetableDialog.getByRole('button', { name: /Schedule/i });
     await scheduleTabBtn.click();
     await expect(timetableDialog).toContainText(/Morning|Afternoon|Evening|First Bus/i);
+
+    // Switch to Timetable Matrix tab
+    const matrixTabBtn = timetableDialog.getByRole('button', { name: /Matrix/i });
+    await expect(matrixTabBtn).toBeVisible();
+    await matrixTabBtn.click();
+    await expect(timetableDialog.getByRole('table')).toBeVisible();
+    await expect(timetableDialog).toContainText('Pasar Seni Platform B');
 
     // Switch to Trip Calculator tab
     const calcTabBtn = timetableDialog.getByRole('button', { name: /Trip Calc/i });
@@ -674,6 +686,66 @@ test.describe('BasBuddy Live Tracking & Storyboard Flows (M6)', () => {
 
     expect(currentCenter).toEqual({ lat: 3.120, lng: 101.680 });
     expect(currentZoom).toBe(16);
+  });
+
+  test('deep links to route via ?route= query parameter and syncs address bar', async ({ page }) => {
+    // Navigate directly with ?route=750
+    await page.goto('/?route=750');
+
+    const routeInspector = page.getByRole('complementary', { name: 'Route inspector' });
+    await expect(routeInspector).toBeVisible();
+    await expect(routeInspector.getByText(/Pasar Seni - Seksyen 2 Shah Alam/i)).toBeVisible();
+
+    // Verify address bar contains ?route=750
+    expect(page.url()).toContain('route=750');
+
+    // Close the route inspector
+    const closeBtn = routeInspector.getByRole('button', { name: 'Close route inspector' });
+    await closeBtn.click();
+    await expect(routeInspector).not.toBeVisible();
+
+    // Verify address bar removed route parameter
+    expect(page.url()).not.toContain('route=750');
+  });
+
+  test('copies route share link and displays toast feedback', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    // Ensure clipboard fallback runs even if browser has stub navigator.share
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'share', {
+        value: undefined,
+        configurable: true,
+      });
+    });
+    await page.goto('/?route=750');
+
+    const routeInspector = page.getByRole('complementary', { name: 'Route inspector' });
+    await expect(routeInspector).toBeVisible();
+
+    const shareBtn = routeInspector.getByRole('button', { name: 'Share route link' });
+    await expect(shareBtn).toBeVisible();
+    await shareBtn.click();
+
+    // Verify toast notification appears
+    const toast = page.locator('[data-testid="toast-notification"]');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText('Route link copied to clipboard');
+  });
+
+  test('back gesture dismisses open search overlay without leaving map', async ({ page }) => {
+    await page.goto('/');
+
+    const searchTrigger = page.getByRole('button', { name: 'Search stops, routes, hubs' });
+    await searchTrigger.click({ force: true });
+
+    const searchModal = page.locator('[data-testid="search-overlay"]');
+    await expect(searchModal).toBeVisible();
+
+    // Trigger browser back gesture
+    await page.goBack();
+
+    // Search overlay closes, map remains visible
+    await expect(searchModal).not.toBeVisible();
   });
 });
 
