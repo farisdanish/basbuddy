@@ -25,6 +25,17 @@ BasBuddy is an independent, mobile-first transit tracker designed to solve daily
 
 ---
 
+## Changelog
+
+- **Map Area Route Search**: Search routes directly within the panned or zoomed map viewport, with one-tap return to GPS location.
+- **Estimated Arrival Dead-Reckoning**: Extrapolates bus positions along route shapes up to 60s when upstream feeds lag, marked with an amber "Estimated" status.
+- **Vehicle Sequence & Off-Course Tracking**: Added `#1`, `#2` badges to identify multiple buses on the same route, plus breadcrumb trails for buses deviating over 200m.
+- **Mobile PWA Enhancements**: Added Android back gesture sheet dismissal, route/stop URL deep linking, toast notifications, and tactile vibration feedback.
+- **Schedule Matrix Table**: Redesigned timetable with a stops-by-departures matrix view, sticky stop column toggle, desktop modal expansion, and time-of-day jump chips.
+- **Upstream API Health Dashboard**: Added live `data.gov.my` latency, HTTP status, active bus count, and timetable sync status to the Info modal.
+
+---
+
 ## ⚠️ Disclaimer
 
 - **Unofficial tool.** BasBuddy is an independent project and is **not affiliated with, endorsed by, or connected to** Prasarana Malaysia Berhad, Rapid Bus Sdn Bhd, RapidKL, or any government agency.
