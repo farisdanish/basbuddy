@@ -458,12 +458,12 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose, systemHealth:
                 <div className="flex items-center justify-between text-[10px] text-[#FFF8EE]/40 border-t border-white/5 pt-2">
                   <span>Provider: Prasarana Malaysia Berhad</span>
                   <a
-                    href="https://data.gov.my/data-catalogue/gtfs-realtime-bus"
+                    href="https://developer.data.gov.my/realtime-api/gtfs-realtime"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#F4A100] hover:underline flex items-center gap-1"
+                    className="text-[#F4A100] hover:underline flex items-center gap-1 font-medium"
                   >
-                    <span>data.gov.my</span>
+                    <span>data.gov.my API Docs</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
@@ -512,6 +512,19 @@ export function InfoModal({ isOpen, initialTab = 'about', onClose, systemHealth:
                   <span>
                     <strong>Offline Schedule Fallback:</strong> When a bus is between trips or drops GPS, BasBuddy automatically displays official timetable countdowns.
                   </span>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] text-[#FFF8EE]/40 border-t border-white/5 pt-2">
+                  <span>Feed: Prasarana GTFS Static</span>
+                  <a
+                    href="https://developer.data.gov.my/realtime-api/gtfs-static"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#F4A100] hover:underline flex items-center gap-1 font-medium"
+                  >
+                    <span>Static API Docs</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
               </div>
 
