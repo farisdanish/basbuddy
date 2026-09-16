@@ -1,5 +1,20 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { X, Calendar, Info, Radio, Sparkles, ArrowRight, Bus, ChevronDown, Check, Table } from 'lucide-react';
+import {
+  X,
+  Calendar,
+  Info,
+  Radio,
+  Sparkles,
+  ArrowRight,
+  Bus,
+  ChevronDown,
+  Check,
+  Table,
+  Pin,
+  PinOff,
+  Zap,
+  Clock,
+} from 'lucide-react';
 import type { RouteDetailsResponse, RouteStopItem } from '@basbuddy/shared';
 import { RouteEtaCalculator } from './RouteEtaCalculator.tsx';
 import { RouteVehiclesTab } from './RouteVehiclesTab.tsx';
@@ -99,6 +114,10 @@ export function RouteTimetableModal({
   onSelectVehicle,
 }: RouteTimetableModalProps) {
   const [activeTab, setActiveTab] = useState<TimetableTab>('timeline');
+  const [scheduleSubView, setScheduleSubView] = useState<'runs' | 'matrix'>('runs');
+  const [pinStops, setPinStops] = useState<boolean>(true);
+  const [hoveredTripId, setHoveredTripId] = useState<string | null>(null);
+  const matrixScrollRef = useRef<HTMLDivElement>(null);
   const [activeDirectionIndex, setActiveDirectionIndex] = useState<number>(initialDirectionIndex);
   const [selectedTripId, setSelectedTripId] = useState<string>('');
 
@@ -150,6 +169,29 @@ export function RouteTimetableModal({
   const nextDepartureTripId = useMemo(() => {
     return findClosestDepartureTripId(dirDepartures);
   }, [dirDepartures]);
+
+  const isMatrixView = activeTab === 'matrix' || (activeTab === 'schedule' && scheduleSubView === 'matrix');
+
+  const handleScrollToTrip = useCallback((tripId?: string) => {
+    if (!tripId || !matrixScrollRef.current) return;
+    const targetHeader = matrixScrollRef.current.querySelector(`[data-trip-id="${tripId}"]`);
+    if (targetHeader) {
+      targetHeader.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, []);
+
+  const handleScrollToNextBus = useCallback(() => {
+    handleScrollToTrip(nextDepartureTripId);
+  }, [handleScrollToTrip, nextDepartureTripId]);
+
+  useEffect(() => {
+    if (isMatrixView && nextDepartureTripId) {
+      const timer = setTimeout(() => {
+        handleScrollToNextBus();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isMatrixView, nextDepartureTripId, handleScrollToNextBus]);
 
   // Default to the trip closest to current time
   useEffect(() => {
@@ -331,7 +373,9 @@ export function RouteTimetableModal({
       }}
       className={
         canDock
-          ? 'fixed inset-auto right-4 md:right-6 top-20 bottom-14 w-full max-w-[440px] z-20 pointer-events-none block animate-in fade-in slide-in-from-right-4 duration-200'
+          ? `fixed inset-auto right-4 md:right-6 top-20 bottom-14 w-full z-20 pointer-events-none block animate-in fade-in slide-in-from-right-4 duration-300 transition-[max-width] ${
+              isMatrixView ? 'max-w-[760px]' : 'max-w-[440px]'
+            }`
           : 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200'
       }
     >
@@ -339,7 +383,9 @@ export function RouteTimetableModal({
         className={
           canDock
             ? 'relative w-full h-full flex flex-col rounded-2xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden text-[#FFF8EE] pointer-events-auto'
-            : 'relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-3xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden text-[#FFF8EE] animate-in zoom-in-95 duration-200'
+            : `relative w-full max-h-[85vh] flex flex-col rounded-3xl bg-[#182337]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden text-[#FFF8EE] animate-in zoom-in-95 duration-200 transition-[max-width] duration-300 ${
+                isMatrixView ? 'max-w-4xl' : 'max-w-lg'
+              }`
         }
       >
         {/* Header section */}
@@ -368,13 +414,13 @@ export function RouteTimetableModal({
           </button>
         </div>
 
-        {/* Direction Switcher (Outbound vs Inbound) */}
+        {/* Direction Switcher Pill Selector */}
         {directions.length > 1 && (
-          <div className="p-2.5 bg-[#101B2D]/50 border-b border-white/5 shrink-0">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-[#FFF8EE]/40 mb-1.5 px-1">
+          <div className="p-3 border-b border-white/10 bg-[#101B2D]/60 shrink-0">
+            <label className="block text-[10px] font-mono uppercase tracking-wider text-[#FFF8EE]/50 mb-1.5 font-medium">
               Select Route Direction
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
               {directions.map((dir, index) => {
                 const isSelected = index === activeDirectionIndex;
                 return (
@@ -397,12 +443,12 @@ export function RouteTimetableModal({
           </div>
         )}
 
-        {/* View Mode Navigation Tabs */}
+        {/* View Mode Navigation Tabs (Streamlined 4 Tabs) */}
         <div className="flex items-center gap-1 p-1.5 bg-[#101B2D]/80 border-b border-white/10 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('timeline')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-sans font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-sans font-semibold transition-all ${
               activeTab === 'timeline'
                 ? 'bg-[#F4A100] text-[#101B2D] shadow-md'
                 : 'text-[#FFF8EE]/70 hover:bg-white/5 hover:text-[#FFF8EE]'
@@ -415,7 +461,7 @@ export function RouteTimetableModal({
           <button
             type="button"
             onClick={() => setActiveTab('vehicles')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-sans font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-sans font-semibold transition-all ${
               activeTab === 'vehicles'
                 ? 'bg-[#F4A100] text-[#101B2D] shadow-md'
                 : 'text-[#FFF8EE]/70 hover:bg-white/5 hover:text-[#FFF8EE]'
@@ -438,9 +484,11 @@ export function RouteTimetableModal({
 
           <button
             type="button"
-            onClick={() => setActiveTab('schedule')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-sans font-semibold transition-all ${
-              activeTab === 'schedule'
+            onClick={() => {
+              setActiveTab('schedule');
+            }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-sans font-semibold transition-all ${
+              activeTab === 'schedule' || activeTab === 'matrix'
                 ? 'bg-[#F4A100] text-[#101B2D] shadow-md'
                 : 'text-[#FFF8EE]/70 hover:bg-white/5 hover:text-[#FFF8EE]'
             }`}
@@ -451,21 +499,8 @@ export function RouteTimetableModal({
 
           <button
             type="button"
-            onClick={() => setActiveTab('matrix')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-sans font-semibold transition-all ${
-              activeTab === 'matrix'
-                ? 'bg-[#F4A100] text-[#101B2D] shadow-md'
-                : 'text-[#FFF8EE]/70 hover:bg-white/5 hover:text-[#FFF8EE]'
-            }`}
-          >
-            <Table className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Matrix</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveTab('calculator')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-sans font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-sans font-semibold transition-all ${
               activeTab === 'calculator'
                 ? 'bg-[#F4A100] text-[#101B2D] shadow-md'
                 : 'text-[#FFF8EE]/70 hover:bg-white/5 hover:text-[#FFF8EE]'
@@ -696,240 +731,355 @@ export function RouteTimetableModal({
           </div>
         )}
 
-        {/* Tab 2: Full Daily Schedule Grid */}
-        {activeTab === 'schedule' && (
-          <div className="flex-1 overflow-y-auto p-3.5 space-y-4 basbuddy-scroll min-h-0">
-            {/* Operating hours & summary ribbon */}
-            <div className="grid grid-cols-2 gap-2 text-xs font-sans shrink-0">
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-mono text-[#FFF8EE]/40 uppercase truncate">First Bus</div>
-                  <div className="font-bold text-[#FFF8EE] truncate">
-                    {timetable?.firstBusTime ? formatTimeDisplay(timetable.firstBusTime) : '06:00 AM'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-mono text-[#FFF8EE]/40 uppercase truncate">Last Bus</div>
-                  <div className="font-bold text-[#FFF8EE] truncate">
-                    {timetable?.lastBusTime ? formatTimeDisplay(timetable.lastBusTime) : '11:30 PM'}
-                  </div>
-                </div>
+        {/* Tab 3: Unified Schedule & Timetable Matrix */}
+        {(activeTab === 'schedule' || activeTab === 'matrix') && (
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* Sub-view segmented switcher */}
+            <div className="px-3.5 pt-3 shrink-0">
+              <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/10 gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('schedule');
+                    setScheduleSubView('runs');
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-sans font-semibold transition-all ${
+                    scheduleSubView === 'runs' && activeTab !== 'matrix'
+                      ? 'bg-[#F4A100] text-[#101B2D] shadow-sm'
+                      : 'text-[#FFF8EE]/70 hover:text-[#FFF8EE] hover:bg-white/5'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span>Departure Runs</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('schedule');
+                    setScheduleSubView('matrix');
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-sans font-semibold transition-all ${
+                    isMatrixView
+                      ? 'bg-[#F4A100] text-[#101B2D] shadow-sm'
+                      : 'text-[#FFF8EE]/70 hover:text-[#FFF8EE] hover:bg-white/5'
+                  }`}
+                >
+                  <Table className="w-3.5 h-3.5 shrink-0" />
+                  <span>Stops Matrix</span>
+                </button>
               </div>
             </div>
 
-            {dirDepartures.length === 0 && (
-              <div className="text-center py-8 px-4 rounded-2xl bg-white/[0.02] border border-white/5 my-2">
-                <p className="text-sm font-sans font-medium text-[#FFF8EE]">
-                  No scheduled trips found for this direction today
-                </p>
-                <p className="text-xs font-sans text-[#FFF8EE]/50 mt-1">
-                  Service may run on headway intervals or operate under alternate calendar schedules.
-                </p>
-              </div>
-            )}
-
-            {morning.length > 0 && (
-              <div>
-                <h3 className="text-xs font-mono uppercase tracking-wider text-[#F4A100] mb-2">Morning</h3>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {morning.map((d) => {
-                    const isNext = d.tripId === nextDepartureTripId;
-                    return (
-                      <div
-                        key={d.tripId}
-                        onClick={() => {
-                          setSelectedTripId(d.tripId);
-                          setActiveTab('timeline');
-                        }}
-                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
-                          isNext
-                            ? 'bg-[#F4A100]/20 border-[#F4A100] ring-2 ring-[#F4A100]/40 shadow-md'
-                            : 'bg-white/5 border-white/10 hover:bg-white/10'
-                        }`}
-                      >
-                        <span className={`text-xs font-mono font-bold ${isNext ? 'text-[#F4A100]' : 'text-[#FFF8EE]'}`}>
-                          {formatTimeDisplay(d.departureTime)}
-                        </span>
+            {/* View 1: Departure Runs Cards */}
+            {scheduleSubView === 'runs' && activeTab !== 'matrix' && (
+              <div className="flex-1 overflow-y-auto p-3.5 space-y-4 basbuddy-scroll min-h-0">
+                {/* Operating hours & summary ribbon */}
+                <div className="grid grid-cols-2 gap-2 text-xs font-sans shrink-0">
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-mono text-[#FFF8EE]/40 uppercase truncate">First Bus</div>
+                      <div className="font-bold text-[#FFF8EE] truncate">
+                        {timetable?.firstBusTime ? formatTimeDisplay(timetable.firstBusTime) : '06:00 AM'}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                    </div>
+                  </div>
 
-            {afternoon.length > 0 && (
-              <div>
-                <h3 className="text-xs font-mono uppercase tracking-wider text-[#F4A100] mb-2">Afternoon</h3>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {afternoon.map((d) => {
-                    const isNext = d.tripId === nextDepartureTripId;
-                    return (
-                      <div
-                        key={d.tripId}
-                        onClick={() => {
-                          setSelectedTripId(d.tripId);
-                          setActiveTab('timeline');
-                        }}
-                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
-                          isNext
-                            ? 'bg-[#F4A100]/20 border-[#F4A100] ring-2 ring-[#F4A100]/40 shadow-md'
-                            : 'bg-white/5 border-white/10 hover:bg-white/10'
-                        }`}
-                      >
-                        <span className={`text-xs font-mono font-bold ${isNext ? 'text-[#F4A100]' : 'text-[#FFF8EE]'}`}>
-                          {formatTimeDisplay(d.departureTime)}
-                        </span>
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-mono text-[#FFF8EE]/40 uppercase truncate">Last Bus</div>
+                      <div className="font-bold text-[#FFF8EE] truncate">
+                        {timetable?.lastBusTime ? formatTimeDisplay(timetable.lastBusTime) : '11:30 PM'}
                       </div>
-                    );
-                  })}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {evening.length > 0 && (
-              <div>
-                <h3 className="text-xs font-mono uppercase tracking-wider text-[#F4A100] mb-2">Evening</h3>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {evening.map((d) => {
-                    const isNext = d.tripId === nextDepartureTripId;
-                    return (
-                      <div
-                        key={d.tripId}
-                        onClick={() => {
-                          setSelectedTripId(d.tripId);
-                          setActiveTab('timeline');
-                        }}
-                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
-                          isNext
-                            ? 'bg-[#F4A100]/20 border-[#F4A100] ring-2 ring-[#F4A100]/40 shadow-md'
-                            : 'bg-white/5 border-white/10 hover:bg-white/10'
-                        }`}
-                      >
-                        <span className={`text-xs font-mono font-bold ${isNext ? 'text-[#F4A100]' : 'text-[#FFF8EE]'}`}>
-                          {formatTimeDisplay(d.departureTime)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                {dirDepartures.length === 0 && (
+                  <div className="text-center py-8 px-4 rounded-2xl bg-white/[0.02] border border-white/5 my-2">
+                    <p className="text-sm font-sans font-medium text-[#FFF8EE]">
+                      No scheduled trips found for this direction today
+                    </p>
+                    <p className="text-xs font-sans text-[#FFF8EE]/50 mt-1">
+                      Service may run on headway intervals or operate under alternate calendar schedules.
+                    </p>
+                  </div>
+                )}
 
-        {/* Tab 4: Stops × Trips Matrix View */}
-        {activeTab === 'matrix' && (
-          <div className="flex-1 overflow-auto basbuddy-scroll min-h-0 relative p-3.5 space-y-3">
-            <div className="flex items-center justify-between text-xs font-sans text-[#FFF8EE]/70 px-1">
-              <span className="font-medium">
-                {activeStops.length} stops × {dirDepartures.length} trips
-              </span>
-              <span className="text-[11px] font-mono text-[#FFF8EE]/50">
-                Click trip to view in Timeline
-              </span>
-            </div>
-
-            {dirDepartures.length === 0 ? (
-              <div className="text-center py-8 px-4 rounded-2xl bg-white/[0.02] border border-white/5 my-2">
-                <p className="text-sm font-sans font-medium text-[#FFF8EE]">
-                  No scheduled trips found for this direction today
-                </p>
-                <p className="text-xs font-sans text-[#FFF8EE]/50 mt-1">
-                  Service may run on headway intervals or operate under alternate calendar schedules.
-                </p>
-              </div>
-            ) : (
-              <div className="border border-white/10 rounded-2xl overflow-hidden bg-[#101B2D]/90 shadow-xl">
-                <div className="overflow-x-auto basbuddy-scroll max-h-[60vh]">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead className="sticky top-0 z-20 bg-[#182337] shadow-sm">
-                      <tr>
-                        <th className="sticky left-0 z-30 bg-[#182337] p-2.5 font-mono text-[11px] text-[#FFF8EE]/70 uppercase border-b border-r border-white/10 min-w-[160px] max-w-[200px]">
-                          Stop ({activeStops.length})
-                        </th>
-                        {dirDepartures.map((d) => {
-                          const isNext = d.tripId === nextDepartureTripId;
-                          return (
-                            <th
-                              key={d.tripId}
-                              onClick={() => {
-                                setSelectedTripId(d.tripId);
-                                setActiveTab('timeline');
-                              }}
-                              className={`p-2.5 text-center font-mono font-bold text-xs border-b border-white/10 whitespace-nowrap cursor-pointer hover:bg-white/10 transition-colors ${
-                                isNext
-                                  ? 'bg-[#F4A100]/20 text-[#F4A100] border-b-2 border-b-[#F4A100]'
-                                  : 'text-[#FFF8EE]'
-                              }`}
-                              title="Click to view this trip in Timeline"
-                            >
-                              <div className="flex flex-col items-center">
-                                <span>{formatTimeDisplay(d.departureTime)}</span>
-                                {isNext && (
-                                  <span className="text-[9px] font-sans font-extrabold px-1.5 py-0.2 rounded-full bg-[#F4A100] text-[#101B2D] mt-0.5 shadow-sm">
-                                    NEXT
-                                  </span>
-                                )}
-                              </div>
-                            </th>
-                          );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {activeStops.map((stop, rowIdx) => {
-                        const isSelectedStop = stop.stopId === selectedStopId;
+                {morning.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-mono uppercase tracking-wider text-[#F4A100] mb-2">Morning</h3>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {morning.map((d) => {
+                        const isNext = d.tripId === nextDepartureTripId;
                         return (
-                          <tr
-                            key={stop.stopId || `row-${rowIdx}`}
-                            className={isSelectedStop ? 'bg-[#F4A100]/10' : 'hover:bg-white/[0.02]'}
+                          <div
+                            key={d.tripId}
+                            onClick={() => {
+                              setSelectedTripId(d.tripId);
+                              setActiveTab('timeline');
+                            }}
+                            className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                              isNext
+                                ? 'bg-[#F4A100]/20 border-[#F4A100] ring-2 ring-[#F4A100]/40 shadow-md'
+                                : 'bg-white/5 border-white/10 hover:bg-white/10'
+                            }`}
                           >
-                            <td
-                              onClick={() => handleSelectStop(stop.stopId)}
-                              className={`sticky left-0 z-10 p-2 text-xs font-sans border-r border-white/10 truncate cursor-pointer ${
-                                isSelectedStop
-                                  ? 'bg-[#182337] text-[#F4A100] font-bold'
-                                  : 'bg-[#101B2D] text-[#FFF8EE]'
-                              }`}
-                              title={`${stop.stopSequence}. ${stop.stopName} (click to inspect)`}
+                            <span className={`text-xs font-mono font-bold ${isNext ? 'text-[#F4A100]' : 'text-[#FFF8EE]'}`}>
+                              {formatTimeDisplay(d.departureTime)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {afternoon.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-mono uppercase tracking-wider text-[#F4A100] mb-2">Afternoon</h3>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {afternoon.map((d) => {
+                        const isNext = d.tripId === nextDepartureTripId;
+                        return (
+                          <div
+                            key={d.tripId}
+                            onClick={() => {
+                              setSelectedTripId(d.tripId);
+                              setActiveTab('timeline');
+                            }}
+                            className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                              isNext
+                                ? 'bg-[#F4A100]/20 border-[#F4A100] ring-2 ring-[#F4A100]/40 shadow-md'
+                                : 'bg-white/5 border-white/10 hover:bg-white/10'
+                            }`}
+                          >
+                            <span className={`text-xs font-mono font-bold ${isNext ? 'text-[#F4A100]' : 'text-[#FFF8EE]'}`}>
+                              {formatTimeDisplay(d.departureTime)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {evening.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-mono uppercase tracking-wider text-[#F4A100] mb-2">Evening</h3>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {evening.map((d) => {
+                        const isNext = d.tripId === nextDepartureTripId;
+                        return (
+                          <div
+                            key={d.tripId}
+                            onClick={() => {
+                              setSelectedTripId(d.tripId);
+                              setActiveTab('timeline');
+                            }}
+                            className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                              isNext
+                                ? 'bg-[#F4A100]/20 border-[#F4A100] ring-2 ring-[#F4A100]/40 shadow-md'
+                                : 'bg-white/5 border-white/10 hover:bg-white/10'
+                            }`}
+                          >
+                            <span className={`text-xs font-mono font-bold ${isNext ? 'text-[#F4A100]' : 'text-[#FFF8EE]'}`}>
+                              {formatTimeDisplay(d.departureTime)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* View 2: Stops × Trips Matrix View */}
+            {isMatrixView && (
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-3.5 space-y-2.5">
+                {/* Matrix Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 px-1 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-sans font-semibold text-[#FFF8EE]">
+                      {activeStops.length} stops × {dirDepartures.length} trips
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPinStops((prev) => !prev)}
+                      className={`px-2 py-1 rounded-lg text-xs font-sans font-medium flex items-center gap-1 transition-all ${
+                        pinStops
+                          ? 'bg-[#F4A100]/15 text-[#F4A100] border border-[#F4A100]/30'
+                          : 'bg-white/5 text-[#FFF8EE]/60 hover:text-[#FFF8EE] border border-white/10'
+                      }`}
+                      title={pinStops ? 'Stops column is pinned on the left. Click to unpin and scroll freely.' : 'Click to pin stops column on the left.'}
+                    >
+                      {pinStops ? <Pin className="w-3 h-3 text-[#F4A100]" /> : <PinOff className="w-3 h-3" />}
+                      <span>{pinStops ? 'Pinned' : 'Free Scroll'}</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 overflow-x-auto">
+                    {nextDepartureTripId && (
+                      <button
+                        type="button"
+                        onClick={handleScrollToNextBus}
+                        className="px-2 py-1 rounded-lg text-[11px] font-sans font-bold bg-[#F4A100] text-[#101B2D] hover:bg-[#F4A100]/90 transition-all flex items-center gap-1 shrink-0 shadow-sm"
+                        title="Scroll to next scheduled departure"
+                      >
+                        <Zap className="w-3 h-3 fill-current" />
+                        <span>Next Bus</span>
+                      </button>
+                    )}
+                    {morning.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleScrollToTrip(morning[0]?.tripId)}
+                        className="px-2 py-0.5 rounded-lg text-[10px] font-mono bg-white/5 hover:bg-white/10 text-[#FFF8EE]/70 border border-white/10 shrink-0"
+                      >
+                        AM
+                      </button>
+                    )}
+                    {afternoon.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleScrollToTrip(afternoon[0]?.tripId)}
+                        className="px-2 py-0.5 rounded-lg text-[10px] font-mono bg-white/5 hover:bg-white/10 text-[#FFF8EE]/70 border border-white/10 shrink-0"
+                      >
+                        Midday
+                      </button>
+                    )}
+                    {evening.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleScrollToTrip(evening[0]?.tripId)}
+                        className="px-2 py-0.5 rounded-lg text-[10px] font-mono bg-white/5 hover:bg-white/10 text-[#FFF8EE]/70 border border-white/10 shrink-0"
+                      >
+                        PM
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {dirDepartures.length === 0 ? (
+                  <div className="text-center py-8 px-4 rounded-2xl bg-white/[0.02] border border-white/5 my-2">
+                    <p className="text-sm font-sans font-medium text-[#FFF8EE]">
+                      No scheduled trips found for this direction today
+                    </p>
+                    <p className="text-xs font-sans text-[#FFF8EE]/50 mt-1">
+                      Service may run on headway intervals or operate under alternate calendar schedules.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border border-white/10 rounded-2xl overflow-hidden bg-[#101B2D]/90 shadow-xl flex-1 flex flex-col min-h-0">
+                    <div ref={matrixScrollRef} className="overflow-auto basbuddy-scroll flex-1">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="sticky top-0 z-20 bg-[#182337] shadow-sm">
+                          <tr>
+                            <th
+                              className={`${
+                                pinStops ? 'sticky left-0 z-30 bg-[#182337]' : 'bg-[#182337]'
+                              } p-2 font-mono text-[11px] text-[#FFF8EE]/70 uppercase border-b border-r border-white/10 w-[115px] sm:w-[155px] min-w-[115px] max-w-[115px] sm:max-w-[155px] truncate`}
                             >
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="text-[10px] font-mono text-[#FFF8EE]/40 w-4 shrink-0 text-right">
-                                  {stop.stopSequence}
-                                </span>
-                                <span className="truncate">
-                                  {stop.stopName}
-                                </span>
-                              </div>
-                            </td>
+                              Stop ({activeStops.length})
+                            </th>
                             {dirDepartures.map((d) => {
-                              const depSec = parseTimeToSeconds(d.departureTime);
-                              const arrSec = depSec + (stopOffsetsSec[rowIdx] ?? 0);
                               const isNext = d.tripId === nextDepartureTripId;
+                              const isHovered = hoveredTripId === d.tripId;
                               return (
-                                <td
+                                <th
                                   key={d.tripId}
+                                  data-trip-id={d.tripId}
+                                  onMouseEnter={() => setHoveredTripId(d.tripId)}
+                                  onMouseLeave={() => setHoveredTripId(null)}
                                   onClick={() => {
                                     setSelectedTripId(d.tripId);
-                                    handleSelectStop(stop.stopId);
+                                    setActiveTab('timeline');
                                   }}
-                                  className={`p-2 text-center font-mono text-[11px] whitespace-nowrap cursor-pointer hover:bg-white/5 transition-colors ${
-                                    isNext ? 'bg-[#F4A100]/5 text-[#F4A100] font-semibold' : 'text-[#FFF8EE]/80'
+                                  className={`p-2 text-center font-mono font-bold text-xs border-b border-white/10 whitespace-nowrap cursor-pointer transition-colors min-w-[70px] ${
+                                    isNext
+                                      ? 'bg-[#F4A100]/20 text-[#F4A100] border-b-2 border-b-[#F4A100]'
+                                      : isHovered
+                                      ? 'bg-white/10 text-[#FFF8EE]'
+                                      : 'text-[#FFF8EE] hover:bg-white/10'
                                   }`}
+                                  title="Click to inspect this trip in Timeline"
                                 >
-                                  {secondsToTimeString(arrSec)}
-                                </td>
+                                  <div className="flex flex-col items-center">
+                                    <span>{formatTimeDisplay(d.departureTime)}</span>
+                                    {isNext && (
+                                      <span className="text-[9px] font-sans font-extrabold px-1.5 py-0.2 rounded-full bg-[#F4A100] text-[#101B2D] mt-0.5 shadow-sm">
+                                        NEXT
+                                      </span>
+                                    )}
+                                  </div>
+                                </th>
                               );
                             })}
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {activeStops.map((stop, rowIdx) => {
+                            const isSelectedStop = stop.stopId === selectedStopId;
+                            return (
+                              <tr
+                                key={stop.stopId || `row-${rowIdx}`}
+                                className={isSelectedStop ? 'bg-[#F4A100]/10' : 'hover:bg-white/[0.02]'}
+                              >
+                                <td
+                                  onClick={() => handleSelectStop(stop.stopId)}
+                                  className={`${
+                                    pinStops ? 'sticky left-0 z-10' : ''
+                                  } p-2 text-xs font-sans border-r border-white/10 truncate cursor-pointer w-[115px] sm:w-[155px] min-w-[115px] max-w-[115px] sm:max-w-[155px] ${
+                                    isSelectedStop
+                                      ? 'bg-[#182337] text-[#F4A100] font-bold'
+                                      : 'bg-[#101B2D] text-[#FFF8EE]'
+                                  }`}
+                                  title={`${stop.stopSequence}. ${stop.stopName} (click to inspect)`}
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-[10px] font-mono text-[#FFF8EE]/40 w-4 shrink-0 text-right">
+                                      {stop.stopSequence}
+                                    </span>
+                                    <span className="truncate text-[11px] sm:text-xs">
+                                      {stop.stopName}
+                                    </span>
+                                  </div>
+                                </td>
+                                {dirDepartures.map((d) => {
+                                  const depSec = parseTimeToSeconds(d.departureTime);
+                                  const arrSec = depSec + (stopOffsetsSec[rowIdx] ?? 0);
+                                  const isNext = d.tripId === nextDepartureTripId;
+                                  const isHovered = hoveredTripId === d.tripId;
+                                  return (
+                                    <td
+                                      key={d.tripId}
+                                      data-trip-id={d.tripId}
+                                      onMouseEnter={() => setHoveredTripId(d.tripId)}
+                                      onMouseLeave={() => setHoveredTripId(null)}
+                                      onClick={() => {
+                                        setSelectedTripId(d.tripId);
+                                        handleSelectStop(stop.stopId);
+                                      }}
+                                      className={`p-2 text-center font-mono text-[11px] whitespace-nowrap cursor-pointer transition-colors min-w-[70px] ${
+                                        isNext
+                                          ? 'bg-[#F4A100]/5 text-[#F4A100] font-semibold'
+                                          : isHovered
+                                          ? 'bg-white/5 text-[#FFF8EE]'
+                                          : 'text-[#FFF8EE]/80 hover:bg-white/5'
+                                      }`}
+                                    >
+                                      {secondsToTimeString(arrSec)}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
