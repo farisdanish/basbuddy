@@ -20,6 +20,18 @@ export type ArrivalSource = 'live' | 'schedule';
  */
 export type FreshnessStatus = 'live' | 'stale' | 'estimated' | 'signal_lost';
 
+/**
+ * Empirical reliability tier of live GPS telemetry for a transit route (Task D2).
+ * 'usually_available' - Active vehicles consistently observed on schedule (>=60% active cycles)
+ * 'intermittent'      - Partial transponder coverage or periodic gaps (20%-59% active cycles)
+ * 'rarely_available'  - Chronically feedless, private contractor, or dark fleet (<20% active cycles)
+ */
+export type TrackingReliability =
+  | 'usually_available'
+  | 'intermittent'
+  | 'rarely_available';
+
+
 // ── Shared sub-shapes ─────────────────────────────────────────────────────────
 
 /**
@@ -142,6 +154,8 @@ export interface RouteTimetable {
   totalTripsToday: number;
   nextDepartures: RouteScheduledDeparture[];
   allDepartures: RouteScheduledDeparture[];
+  /** Median interval in minutes between scheduled daytime departures (Task D3) */
+  headwayMinutes?: number | null;
 }
 
 export interface RouteDetailsResponse {
@@ -154,6 +168,8 @@ export interface RouteDetailsResponse {
   stops: RouteStopItem[];
   vehicles: LiveVehicle[];
   timetable?: RouteTimetable | null;
+  /** Live GPS tracking reliability tier for this route (Task D2) */
+  trackingReliability?: TrackingReliability;
 }
 
 // ── Origin-to-Destination Trip Calculation ───────────────────────────────────

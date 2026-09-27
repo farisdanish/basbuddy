@@ -3,6 +3,7 @@ import { transit_realtime } from 'gtfs-realtime-bindings';
 import { decodeRealtimeFeed } from '../decode.js';
 import { matchVehicle } from '../matcher.js';
 import { computeEta } from '../eta.js';
+import { evaluateReliabilityTier } from '../cycle.js';
 import {
   haversineMeters,
   projectPointToPolylineDistance,
@@ -463,4 +464,16 @@ describe('GTFS-RT Poller & ETA Engine', () => {
     });
   });
 
+  describe('Per-Route Live-Tracking Reliability Signal (Task D2)', () => {
+    it('classifies reliability tiers based on observation ratios', () => {
+      expect(evaluateReliabilityTier(0.85)).toBe('usually_available');
+      expect(evaluateReliabilityTier(0.60)).toBe('usually_available');
+      expect(evaluateReliabilityTier(0.59)).toBe('intermittent');
+      expect(evaluateReliabilityTier(0.20)).toBe('intermittent');
+      expect(evaluateReliabilityTier(0.19)).toBe('rarely_available');
+      expect(evaluateReliabilityTier(0.00)).toBe('rarely_available');
+    });
+  });
+
 });
+

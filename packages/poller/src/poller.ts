@@ -19,7 +19,7 @@ import { VALKEY_KEYS } from '@basbuddy/shared';
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS ?? '30000', 10);
 const GTFS_REALTIME_URL =
   process.env.GTFS_REALTIME_URL ??
-  'https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-kl';
+  'https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana/?category=rapid-bus-kl';
 
 async function main(): Promise<void> {
   console.log('[poller] BasBuddy GTFS-RT Poller starting...');

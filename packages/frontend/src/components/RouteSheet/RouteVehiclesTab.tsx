@@ -80,9 +80,28 @@ export function RouteVehiclesTab({
             </span>
           </div>
 
-          <span className="text-[11px] font-mono text-[#FFF8EE]/50">
-            {activeStops.length} stops on line
-          </span>
+          <div className="flex items-center gap-2">
+            {routeData.trackingReliability && (
+              <span
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+                  routeData.trackingReliability === 'usually_available'
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                    : routeData.trackingReliability === 'intermittent'
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                      : 'bg-white/5 border-white/10 text-[#FFF8EE]/60'
+                }`}
+              >
+                {routeData.trackingReliability === 'usually_available'
+                  ? 'Usually Active'
+                  : routeData.trackingReliability === 'intermittent'
+                    ? 'Intermittent'
+                    : 'Schedule Only'}
+              </span>
+            )}
+            <span className="text-[11px] font-mono text-[#FFF8EE]/50">
+              {activeStops.length} stops on line
+            </span>
+          </div>
         </div>
 
         {/* Direction vs All filter toggles */}
@@ -129,7 +148,9 @@ export function RouteVehiclesTab({
             <p className="text-xs font-sans text-[#FFF8EE]/60 mt-1 max-w-xs mx-auto">
               {filterMode === 'direction' && allVehicles.length > 0
                 ? 'There are buses operating on the return direction of this route.'
-                : 'Vehicles may be in holding terminals or between scheduled dispatch runs.'}
+                : routeData.timetable?.headwayMinutes
+                  ? `This route operates approximately every ~${routeData.timetable.headwayMinutes} mins according to the published schedule.`
+                  : 'Vehicles may be in holding terminals or between scheduled dispatch runs.'}
             </p>
           </div>
 

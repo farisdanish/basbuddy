@@ -11,7 +11,7 @@ export const KNOWN_FEEDS: Record<string, FeedConfig> = {
     name: 'RapidKL Bus',
     url:
       process.env.GTFS_STATIC_RAPID_BUS_KL_URL ??
-      'https://api.data.gov.my/gtfs-static/prasarana?category=rapid-bus-kl',
+      'https://api.data.gov.my/gtfs-static/prasarana/?category=rapid-bus-kl',
     agencyId: 'rapid-bus-kl',
   },
   'rapid-bus-mrtfeeder': {
@@ -19,7 +19,7 @@ export const KNOWN_FEEDS: Record<string, FeedConfig> = {
     name: 'MRT Feeder Bus',
     url:
       process.env.GTFS_STATIC_MRT_FEEDER_URL ??
-      'https://api.data.gov.my/gtfs-static/prasarana?category=rapid-bus-mrtfeeder',
+      'https://api.data.gov.my/gtfs-static/prasarana/?category=rapid-bus-mrtfeeder',
     agencyId: 'rapid-bus-mrtfeeder',
   },
   'rapid-rail-kl': {
@@ -27,7 +27,7 @@ export const KNOWN_FEEDS: Record<string, FeedConfig> = {
     name: 'Rapid Rail KL (LRT / MRT / Monorail)',
     url:
       process.env.GTFS_STATIC_RAPID_RAIL_KL_URL ??
-      'https://api.data.gov.my/gtfs-static/prasarana?category=rapid-rail-kl',
+      'https://api.data.gov.my/gtfs-static/prasarana/?category=rapid-rail-kl',
     agencyId: 'rapid-rail-kl',
   },
 };

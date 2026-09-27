@@ -12,6 +12,7 @@ export const VALKEY_KEYS = {
   vehicle: (tripId: string) => `vehicle:${tripId}`,
   stopEtas: (stopId: string) => `stop_etas:${stopId}`,
   routeVehicles: (routeId: string) => `route:${routeId}:vehicles`,
+  routeReliability: (routeId: string) => `route:${routeId}:reliability`,
   pollerLastSuccess: 'poller:last_success',
   upstreamHealth: 'poller:upstream_health',
   scheduleMetadata: 'ingestion:schedule_metadata',
@@ -77,7 +78,23 @@ export interface VehiclePositionCache {
   isExtrapolated?: boolean;
 }
 
+// ── RouteReliabilityCache ─────────────────────────────────────────────────────
+
+/**
+ * Stored under `route:{routeId}:reliability` by the poller (Task D2).
+ * Tracks the empirical rolling reliability of GPS telemetry for this route.
+ */
+export interface RouteReliabilityCache {
+  routeId: string;
+  reliability: import('./api.js').TrackingReliability;
+  activeCycles: number;
+  sampleCycles: number;
+  ratio: number;
+  updatedAt: string;
+}
+
 // ── Re-export StopEtasResponse for the poller ─────────────────────────────────
 // The poller writes a StopEtasResponse directly into stop_etas:{stopId}.
 // Re-exported here so the poller only needs to import from @basbuddy/shared.
-export type { StopEtasResponse, StopArrival } from './api.js';
+export type { StopEtasResponse, StopArrival, TrackingReliability } from './api.js';
+

@@ -76,7 +76,7 @@ services:
       POSTGRES_DB: basbuddy
       POSTGRES_USER: basbuddy
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-      GTFS_REALTIME_URL: https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-kl
+      GTFS_REALTIME_URL: https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana/?category=rapid-bus-kl
       POLL_INTERVAL_MS: "30000"
       VEHICLE_TTL_SECONDS: "240"
       AVG_SPEED_KMH: "25"

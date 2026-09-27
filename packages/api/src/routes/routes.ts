@@ -13,6 +13,7 @@ import {
   type VehiclePositionCache,
   type RouteTimetable,
   type RouteScheduledDeparture,
+  type TrackingReliability,
 } from '@basbuddy/shared';
 
 export const routesRouter = Router();
@@ -454,16 +455,60 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
           }
         });
 
+        // Calculate daytime median headway in minutes (Task D3)
+        let headwayMinutes: number | null = null;
+        if (allDepartures.length >= 2) {
+          const intervals: number[] = [];
+          for (let i = 1; i < allDepartures.length; i++) {
+            try {
+              const prev = parseGtfsTime(allDepartures[i - 1]!.departureTime);
+              const curr = parseGtfsTime(allDepartures[i]!.departureTime);
+              const diffMin = Math.round((curr - prev) / 60);
+              if (diffMin >= 3 && diffMin <= 120) {
+                intervals.push(diffMin);
+              }
+            } catch {
+              // Ignore invalid times
+            }
+          }
+          if (intervals.length > 0) {
+            intervals.sort((a, b) => a - b);
+            const mid = Math.floor(intervals.length / 2);
+            headwayMinutes =
+              intervals.length % 2 !== 0
+                ? intervals[mid]!
+                : Math.round((intervals[mid - 1]! + intervals[mid]!) / 2);
+          }
+        }
+
         timetable = {
           firstBusTime: allDepartures[0]?.departureTime ?? null,
           lastBusTime: allDepartures[allDepartures.length - 1]?.departureTime ?? null,
           totalTripsToday: allDepartures.length,
           nextDepartures,
           allDepartures,
+          headwayMinutes,
         };
       }
     } catch (timetableErr) {
       console.warn(`[api/routes] Timetable calculation warning for routeId=${routeId}:`, timetableErr);
+    }
+
+    // 7. Get empirical tracking reliability tier from Valkey (Task D2)
+    let trackingReliability: TrackingReliability = 'rarely_available';
+    try {
+      const relRaw = await valkey.get(VALKEY_KEYS.routeReliability(routeId));
+      if (relRaw) {
+        const relParsed = JSON.parse(relRaw);
+        if (relParsed.reliability) {
+          trackingReliability = relParsed.reliability;
+        }
+      } else {
+        // Fallback if poller hasn't cached reliability yet
+        trackingReliability = vehicles.length > 0 ? 'usually_available' : 'rarely_available';
+      }
+    } catch {
+      trackingReliability = vehicles.length > 0 ? 'usually_available' : 'rarely_available';
     }
 
     const response: RouteDetailsResponse = {
@@ -476,6 +521,7 @@ routesRouter.get('/routes/:routeId', async (req, res) => {
       stops: primaryStops,
       vehicles,
       timetable,
+      trackingReliability,
     };
 
     res.json(response);

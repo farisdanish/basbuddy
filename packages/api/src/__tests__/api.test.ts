@@ -385,9 +385,10 @@ describe('BasBuddy REST API (M4)', () => {
       mockPool.query.mockResolvedValueOnce({
         rows: [
           { trip_id: 'trip_1', direction_id: 0, trip_headsign: 'Terminal', departure_time: '06:30:00' },
-          { trip_id: 'trip_2', direction_id: 0, trip_headsign: 'Terminal', departure_time: '23:00:00' },
+          { trip_id: 'trip_2', direction_id: 0, trip_headsign: 'Terminal', departure_time: '06:50:00' },
+          { trip_id: 'trip_3', direction_id: 0, trip_headsign: 'Terminal', departure_time: '23:00:00' },
         ],
-        rowCount: 2,
+        rowCount: 3,
       });
 
       const res = await request(app).get('/api/routes/753');
@@ -399,8 +400,10 @@ describe('BasBuddy REST API (M4)', () => {
       expect(res.body.timetable).not.toBeNull();
       expect(res.body.timetable.firstBusTime).toBe('06:30:00');
       expect(res.body.timetable.lastBusTime).toBe('23:00:00');
-      expect(res.body.timetable.totalTripsToday).toBe(2);
-      expect(res.body.timetable.allDepartures).toHaveLength(2);
+      expect(res.body.timetable.totalTripsToday).toBe(3);
+      expect(res.body.timetable.allDepartures).toHaveLength(3);
+      expect(res.body.timetable.headwayMinutes).toBe(20);
+      expect(res.body.trackingReliability).toBeDefined();
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('feed_id = $2'),
         ['753', 'rapid-bus-kl'],

@@ -259,17 +259,38 @@ export function RouteTrackerSheet({
         <div className="px-4 py-2.5 bg-[#101B2D]/70 border-b border-white/5 shrink-0">
           {vehiclesCount === 0 ? (
             <div className="space-y-2">
-              <div className="flex items-start gap-2 text-[11px] font-sans text-amber-200/90 leading-tight">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                <span>
-                  No live GPS telemetry in open feed. Showing published timetable schedule.
-                </span>
+              <div className="flex items-center justify-between gap-2 text-[11px] font-sans leading-tight">
+                <div className="flex items-center gap-1.5 text-amber-300 font-medium">
+                  <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>
+                    {timetable?.headwayMinutes
+                      ? `Runs every ~${timetable.headwayMinutes} mins`
+                      : 'Scheduled timetable active'}
+                  </span>
+                </div>
+                {routeData?.trackingReliability && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+                      routeData.trackingReliability === 'usually_available'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        : routeData.trackingReliability === 'intermittent'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                          : 'bg-white/5 border-white/10 text-[#FFF8EE]/60'
+                    }`}
+                  >
+                    {routeData.trackingReliability === 'usually_available'
+                      ? 'Live Active'
+                      : routeData.trackingReliability === 'intermittent'
+                        ? 'Intermittent'
+                        : 'Schedule'}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5 text-xs font-sans">
-                <div className="flex items-center gap-1.5 text-[#FFF8EE]/80">
-                  <Clock className="w-3.5 h-3.5 text-[#F4A100]" />
-                  <span>
+                <div className="flex items-center gap-1.5 text-[#FFF8EE]/80 min-w-0">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400/80 shrink-0" />
+                  <span className="truncate">
                     {nextDeparture
                       ? `Next: ${formatTimeDisplay(nextDeparture.departureTime)}`
                       : timetable?.firstBusTime
@@ -291,9 +312,28 @@ export function RouteTrackerSheet({
             </div>
           ) : (
             <div className="flex items-center justify-between text-xs font-sans">
-              <div className="flex items-center gap-1.5 text-emerald-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[#FFF8EE]/90">Live GPS tracking active</span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[#FFF8EE]/90">Live GPS tracking active</span>
+                </div>
+                {routeData?.trackingReliability && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+                      routeData.trackingReliability === 'usually_available'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        : routeData.trackingReliability === 'intermittent'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                          : 'bg-white/5 border-white/10 text-[#FFF8EE]/60'
+                    }`}
+                  >
+                    {routeData.trackingReliability === 'usually_available'
+                      ? 'Reliable'
+                      : routeData.trackingReliability === 'intermittent'
+                        ? 'Intermittent'
+                        : 'Schedule'}
+                  </span>
+                )}
               </div>
 
               <button

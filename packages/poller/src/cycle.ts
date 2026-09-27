@@ -13,6 +13,8 @@ import {
   VALKEY_KEYS,
   VEHICLE_TTL_SECONDS,
   type VehiclePositionCache,
+  type RouteReliabilityCache,
+  type TrackingReliability,
   type StopArrival,
   type StopEtasResponse,
   type UpstreamHealthInfo,
@@ -46,6 +48,18 @@ export interface TrackedVehicleState {
 
 // In-memory tracking map for single-instance poller dead-reckoning
 export const trackedVehiclesMap = new Map<string, TrackedVehicleState>();
+
+// In-memory rolling activity history for single-instance poller (Task D2)
+// routeId -> boolean[] (true if active vehicle matched in cycle, max 20 samples = ~10 mins)
+export const routeActivityHistory = new Map<string, boolean[]>();
+export const ROLLING_SAMPLE_SIZE = 20;
+
+export function evaluateReliabilityTier(ratio: number): TrackingReliability {
+  if (ratio >= 0.6) return 'usually_available';
+  if (ratio >= 0.2) return 'intermittent';
+  return 'rarely_available';
+}
+
 
 /**
  * A single poll cycle:
@@ -291,6 +305,40 @@ export async function runPollCycle(opts: CycleOptions): Promise<void> {
       pipeline.sadd(key, ...tripIds);
       pipeline.expire(key, VEHICLE_TTL_SECONDS);
     }
+  }
+
+  // 5b. route:{routeId}:reliability keys (Task D2)
+  for (const routeId of staticLookup.routes.keys()) {
+    const isActive = (routeVehicleMap.get(routeId)?.length ?? 0) > 0;
+    if (!routeActivityHistory.has(routeId)) {
+      routeActivityHistory.set(routeId, []);
+    }
+    const history = routeActivityHistory.get(routeId)!;
+    history.push(isActive);
+    if (history.length > ROLLING_SAMPLE_SIZE) {
+      history.shift();
+    }
+
+    const activeCycles = history.filter(Boolean).length;
+    const sampleCycles = history.length;
+    const ratio = sampleCycles > 0 ? activeCycles / sampleCycles : 0;
+    const reliability = evaluateReliabilityTier(ratio);
+
+    const relCache: RouteReliabilityCache = {
+      routeId,
+      reliability,
+      activeCycles,
+      sampleCycles,
+      ratio: Math.round(ratio * 100) / 100,
+      updatedAt: generatedAt,
+    };
+
+    pipeline.set(
+      VALKEY_KEYS.routeReliability(routeId),
+      JSON.stringify(relCache),
+      'EX',
+      600, // 10 minutes TTL
+    );
   }
 
   // stop_etas:{stopId} keys
